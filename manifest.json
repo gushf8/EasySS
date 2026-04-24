@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "EasySS Image Upload",
+  "version": "1.0.0",
+  "description": "Intercepta subidas de archivos para permitirte elegir directamente imágenes de tu portapapeles y capturas de pantalla.",
+  "permissions": ["clipboardRead", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["main_world.js"],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["modal.html", "modal.css", "modal.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_title": "EasySS Image Upload"
+  }
+}
