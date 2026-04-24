@@ -37,6 +37,26 @@ document.addEventListener('click', function(e) {
   }
 }, true); // Use capture phase to intercept early
 
+// --- 3b. PREVENT PASTE LEAKAGE TO PAGE ---
+document.addEventListener('paste', function(e) {
+  if (modalIframe) {
+    const items = (e.clipboardData || window.clipboardData).items;
+    let hasImage = false;
+    for (const item of items) {
+      if (item.type.indexOf('image') !== -1) {
+        hasImage = true;
+        break;
+      }
+    }
+
+    if (hasImage) {
+      e.preventDefault();
+      e.stopPropagation();
+      modalIframe.focus();
+    }
+  }
+}, true);
+
 
 // --- 4. MODAL MANAGEMENT ---
 function openModal() {
@@ -66,6 +86,13 @@ function openModal() {
   `;
   
   document.documentElement.appendChild(modalIframe);
+  
+  // Keep focus on the iframe
+  const focusHandler = () => {
+    if (modalIframe) modalIframe.focus();
+  };
+  window.addEventListener('blur', focusHandler);
+  modalIframe._focusHandler = focusHandler;
   
   setTimeout(() => {
     if (modalIframe) {
@@ -141,6 +168,9 @@ window.addEventListener('message', function(e) {
 
 function closeModal() {
   if (modalIframe) {
+    if (modalIframe._focusHandler) {
+      window.removeEventListener('blur', modalIframe._focusHandler);
+    }
     modalIframe.remove();
     modalIframe = null;
   }

@@ -86,8 +86,26 @@ function getImagesFromDB() {
   });
 }
 
-function sendMessage(type, data = {}) {
-  window.parent.postMessage({ source: 'EASYSS_EXTENSION', type, ...data }, '*');
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.querySelector('span').innerText = message;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+async function processAndSendBlob(blob, filename = null) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      sendMessage('FILE_SELECTED', {
+        dataUrl: e.target.result,
+        filename: filename || `easyss_${Date.now()}.png`
+      });
+      resolve();
+    };
+    reader.readAsDataURL(blob);
+  });
 }
 
 function renderImages(images, newHash = null) {
@@ -305,7 +323,7 @@ function renderImages(images, newHash = null) {
         reader.readAsDataURL(blob);
       } catch (err) {
         console.error("Error processing selection:", err);
-        alert("No se pudo procesar esta imagen. Es posible que el archivo ya no esté disponible.");
+        showToast("Error al procesar la imagen");
         card.style.transform = '';
         card.style.opacity = '';
       }
@@ -344,6 +362,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 document.addEventListener('paste', async (e) => {
+  // Prevent propagation to the underlying page (like WhatsApp chat)
+  e.stopPropagation();
+
   const items = (e.clipboardData || window.clipboardData).items;
   let newImageBlob = null;
   for (const item of items) {
@@ -354,10 +375,16 @@ document.addEventListener('paste', async (e) => {
   }
   
   if (newImageBlob) {
+    // Prevent default only if we found an image to avoid blocking text paste if ever needed
+    e.preventDefault(); 
     try {
+      showToast("Imagen pegada con éxito");
+      
+      // Save to DB for history
       await addImageToDB(newImageBlob);
-      // Use refreshUI to re-sync everything (DB + Downloads)
-      await refreshUI();
+      
+      // Auto-send immediately
+      await processAndSendBlob(newImageBlob);
     } catch (err) {
       console.error("Error pasting image:", err);
     }

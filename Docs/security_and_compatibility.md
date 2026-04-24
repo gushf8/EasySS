@@ -38,7 +38,21 @@ Para que sitios como Facebook reconozcan que se ha seleccionado un archivo:
   ```
   Esto asegura que los "listeners" de React/Angular/Vue en la página detecten el cambio y procesen la imagen como si hubiera venido del explorador de Windows.
 
-## 5. Aislamiento de Estilos
+## 6. Persistencia e Historial Local (IndexedDB)
+
+EasySS tiene la capacidad de "recordar" capturas de pantalla antiguas sin comprometer la seguridad del usuario ni violar las políticas de los sitios web:
+
+- **Almacenamiento en IndexedDB**: Las imágenes no se guardan en archivos temporales de Windows ni en servidores externos. Se almacenan en **IndexedDB**, una base de datos local integrada en el navegador.
+- **Aislamiento por Origen**: La base de datos reside exclusivamente en el "origen" de la extensión (`chrome-extension://...`). Esto significa que:
+    - El sitio web donde estás navegando (ej. WhatsApp) **no tiene acceso** a tus capturas antiguas.
+    - Los datos están protegidos por la política de mismo origen (*Same-Origin Policy*) del navegador.
+- **Transferencia mediante Mensajería Interna**: Cuando seleccionas una imagen del historial:
+    1. La extensión lee el `Blob` de la base de datos local.
+    2. Lo convierte en un `DataURL` (base64).
+    3. Lo envía al sitio web mediante `window.postMessage`, un canal de comunicación seguro y controlado.
+- **Sin Dependencias de Red**: Al recuperar imágenes de IndexedDB, no se realizan peticiones HTTP. Esto garantiza que la función de historial funcione incluso sin conexión a internet y sin ser bloqueada por las políticas de seguridad de red (CSP) de sitios estrictos.
+
+## 7. Aislamiento de Estilos
 Usamos un IFrame para que el CSS de Facebook o WhatsApp no rompa el diseño del selector, y viceversa. Los estilos de la extensión están encapsulados y no afectan al sitio web original.
 
 ---

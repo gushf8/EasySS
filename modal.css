@@ -1,6 +1,6 @@
 :root {
-  --bg-overlay: rgba(8, 8, 12, 0.75);
-  --bg-modal: #111116e0;
+  --bg-overlay: transparent;
+  --bg-modal: rgba(20, 20, 25, 0.95);
   --bg-header: rgba(255, 255, 255, 0.03);
   --border-modal: rgba(255, 255, 255, 0.1);
   --text-main: #f3f4f6;
@@ -28,8 +28,6 @@ body {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: var(--bg-overlay);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -302,3 +300,29 @@ body {
   to { opacity: 1; transform: scale(1) translateY(0); } 
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
