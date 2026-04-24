@@ -179,9 +179,43 @@ async function checkClipboard() {
 
 async function refreshUI() {
   try {
+    // 1. Get clipboard image (and save to DB)
     const newHash = await checkClipboard();
-    const images = await getImagesFromDB();
-    renderImages(images, newHash);
+    
+    // 2. Get images from IndexedDB (Clipboard history)
+    const dbImages = await getImagesFromDB();
+    
+    // 3. Get images from Downloads (via background)
+    let downloadImages = [];
+    try {
+      downloadImages = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'GET_RECENT_DOWNLOADS' }, (response) => {
+          resolve(response || []);
+        });
+      });
+    } catch (err) {
+      console.log("Could not get downloads:", err);
+    }
+
+    // 4. Combine and Sort
+    // We need to normalize them to a similar format
+    const combined = [
+      ...dbImages.map(img => ({ ...img, type: 'clipboard' })),
+      ...downloadImages.map(img => ({ 
+        id: 'dl_' + img.id, 
+        blob: null, // Will fetch on click or use URL
+        url: img.url,
+        timestamp: img.timestamp, 
+        hash: img.url, // Use URL as hash for downloads
+        filename: img.filename,
+        type: 'download'
+      }))
+    ];
+
+    // Sort by timestamp descending
+    combined.sort((a, b) => b.timestamp - a.timestamp);
+
+    renderImages(combined, newHash);
   } catch (err) {
     console.error("Error refreshing UI:", err);
     const grid = document.getElementById('imageGrid');
@@ -218,11 +252,19 @@ function renderImages(images, newHash = null) {
     card.className = 'image-card';
     if (index === 0) card.style.animationDelay = '0.1s';
     
-    const imgUrl = URL.createObjectURL(item.blob);
+    // Determine image source
+    let imgUrl;
+    if (item.type === 'clipboard') {
+      imgUrl = URL.createObjectURL(item.blob);
+    } else {
+      imgUrl = item.url; // Use the original download URL
+    }
     
     let badgeHtml = '';
     if (item.hash === newHash) {
       badgeHtml = '<div class="badge-new">Nueva</div>';
+    } else if (item.type === 'download') {
+      badgeHtml = '<div class="badge-download">Descarga</div>';
     }
     
     const date = new Date(item.timestamp);
@@ -230,7 +272,7 @@ function renderImages(images, newHash = null) {
     
     card.innerHTML = `
       ${badgeHtml}
-      <img src="${imgUrl}" alt="Captura">
+      <img src="${imgUrl}" alt="Imagen" onerror="this.src='https://via.placeholder.com/200?text=Error+de+Carga'">
       <div class="overlay">
         <div class="overlay-text">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
@@ -239,18 +281,34 @@ function renderImages(images, newHash = null) {
       </div>
     `;
     
-    card.addEventListener('click', () => {
+    card.addEventListener('click', async () => {
       card.style.transform = 'scale(0.95)';
       card.style.opacity = '0.7';
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        sendMessage('FILE_SELECTED', {
-          dataUrl: e.target.result,
-          filename: `easyss_${item.timestamp}.png`
-        });
-      };
-      reader.readAsDataURL(item.blob);
+      try {
+        let blob;
+        if (item.type === 'clipboard') {
+          blob = item.blob;
+        } else {
+          // For downloads, we need to fetch the image to get a blob
+          const response = await fetch(item.url);
+          blob = await response.blob();
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          sendMessage('FILE_SELECTED', {
+            dataUrl: e.target.result,
+            filename: item.filename || `easyss_${item.timestamp}.png`
+          });
+        };
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        console.error("Error processing selection:", err);
+        alert("No se pudo procesar esta imagen. Es posible que el archivo ya no esté disponible.");
+        card.style.transform = '';
+        card.style.opacity = '';
+      }
     });
     
     grid.appendChild(card);

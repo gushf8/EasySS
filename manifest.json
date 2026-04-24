@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "EasySS Image Upload",
+  "background": {
+    "service_worker": "background.js"
+  },
   "version": "1.0.0",
   "description": "Intercepta subidas de archivos para permitirte elegir directamente imágenes de tu portapapeles y capturas de pantalla.",
-  "permissions": ["clipboardRead", "storage"],
+  "permissions": ["clipboardRead", "storage", "downloads"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {

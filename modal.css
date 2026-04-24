@@ -205,6 +205,21 @@ body {
   box-shadow: 0 4px 12px var(--accent-glow);
 }
 
+.badge-download {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: #10b981;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
 .loading, .empty-state {
   grid-column: 1 / -1;
   text-align: center;
