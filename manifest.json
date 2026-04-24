@@ -6,6 +6,19 @@
   },
   "version": "1.0.0",
   "description": "Intercepta subidas de archivos para permitirte elegir directamente imágenes de tu portapapeles y capturas de pantalla.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "EasySS Image Upload",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
   "permissions": ["clipboardRead", "storage", "downloads"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
@@ -28,8 +41,5 @@
       "resources": ["modal.html", "modal.css", "modal.js"],
       "matches": ["<all_urls>"]
     }
-  ],
-  "action": {
-    "default_title": "EasySS Image Upload"
-  }
+  ]
 }
