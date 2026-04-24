@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 document.addEventListener('paste', async (e) => {
-  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  const items = (e.clipboardData || window.clipboardData).items;
   let newImageBlob = null;
   for (const item of items) {
     if (item.type.indexOf('image') !== -1) {
@@ -354,9 +354,13 @@ document.addEventListener('paste', async (e) => {
   }
   
   if (newImageBlob) {
-    const savedItem = await addImageToDB(newImageBlob);
-    const images = await getImagesFromDB();
-    renderImages(images, savedItem.hash);
+    try {
+      await addImageToDB(newImageBlob);
+      // Use refreshUI to re-sync everything (DB + Downloads)
+      await refreshUI();
+    } catch (err) {
+      console.error("Error pasting image:", err);
+    }
   }
 });
 

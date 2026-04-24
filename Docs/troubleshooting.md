@@ -12,9 +12,9 @@ Si encuentras problemas al usar EasySS, consulta esta guía para encontrar soluc
 ## 2. No veo mi última captura de pantalla
 - **Causa**: El navegador requiere que la página tenga "foco" y que el usuario haya interactuado antes de permitir leer el portapapeles.
 - **Solución**: 
-    - Haz clic en cualquier parte de la ventana del selector una vez que se abra.
+    - Haz clic en cualquier parte de la ventana del selector una vez que se abra para asegurar el foco.
     - Asegúrate de haber tomado la captura con `Win + Shift + S` (esto la copia al portapapeles automáticamente).
-    - Puedes intentar pegar directamente con `Ctrl + V` dentro del selector.
+    - **Usa el atajo `Ctrl + V`**: Si la imagen no aparece automáticamente por falta de permisos de Chrome, simplemente presiona `Ctrl + V` dentro del selector y la imagen se añadirá instantáneamente al grid.
 
 ## 3. El sitio web dice que el archivo no es válido
 - **Causa**: Algunos sitios son muy estrictos con los tipos de archivo (MIME types).

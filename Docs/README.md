@@ -7,7 +7,7 @@ Inspirada en la función "Easy Files" de Opera, esta extensión intercepta las s
 ## Características Principales
 
 - 📸 **Captura Automática**: Detecta automáticamente nuevas capturas de pantalla tomadas con `Win + Shift + S`.
-- 📋 **Integración con Portapapeles**: Accede instantáneamente a la última imagen que hayas copiado.
+- 📋 **Integración con Portapapeles**: Accede instantáneamente a la última imagen que hayas copiado o **pega directamente con `Ctrl + V`** dentro del selector.
 - ✨ **Interfaz Premium**: Diseño moderno con efectos de desenfoque (glassmorphism), animaciones fluidas y modo oscuro.
 - 💾 **Historial Local**: Almacena tus imágenes recientes de forma segura en tu navegador usando IndexedDB.
 - 🛠️ **Compatibilidad Total**: Funciona incluso en sitios con políticas de seguridad estrictas (CSP) mediante el procesamiento manual de datos.
