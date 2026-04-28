@@ -19,7 +19,7 @@
       "128": "icons/icon128.png"
     }
   },
-  "permissions": ["clipboardRead", "storage", "downloads"],
+  "permissions": ["clipboardRead", "storage", "downloads", "contextMenus"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {

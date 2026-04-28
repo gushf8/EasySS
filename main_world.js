@@ -19,6 +19,10 @@
         return false;
       }
 
+      if (document.documentElement.dataset.easyssCooldown === "true") {
+        return false;
+      }
+
       const inputId = nextInputId++;
       inputMap.set(inputId, element);
       
@@ -73,7 +77,7 @@
         originalHtmlClick.call(input);
       }
       inputMap.delete(data.inputId);
-    if (data.action === 'FILE_SELECTED') {
+    } else if (data.action === 'FILE_SELECTED') {
       try {
         const parts = data.dataUrl.split(',');
         const mime = parts[0].match(/:(.*?);/)[1];
@@ -90,8 +94,9 @@
         dt.items.add(file);
         input.files = dt.files;
         
-        const event = new Event('change', { bubbles: true });
-        input.dispatchEvent(event);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('blur', { bubbles: true }));
         inputMap.delete(data.inputId);
       } catch (err) {
         console.error("EasySS: Error converting dataUrl", err);
@@ -100,4 +105,5 @@
       inputMap.delete(data.inputId);
     }
   });
+
 })();

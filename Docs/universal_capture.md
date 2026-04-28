@@ -28,8 +28,13 @@ Si haces `Ctrl + Alt + Impr Pant` varias veces de la misma ventana:
 - Si la imagen es idéntica a una que ya detectó antes, sabe que es la misma y no la duplica, simplemente la mueve al principio de la lista.
 - Si la imagen cambió aunque sea por un píxel, la detecta como **"NUEVA"**.
 
-## 4. Conclusión
-La "magia" de EasySS no está en interceptar tus comandos de Windows, sino en ser un observador experto del portapapeles. Esto garantiza:
-- **Compatibilidad Total**: Funciona con cualquier software de captura que use el portapapeles.
-- **Privacidad**: La extensión no tiene que registrar cada tecla que presionas.
-- **Simplicidad**: Solo necesitas que la imagen esté "copiada" para que EasySS la vea.
+## 4. Bypass de Capas y Menú Contextual (Facebook/Instagram)
+
+A partir de la versión 1.0.1, EasySS incluye un sistema avanzado para sitios que protegen sus imágenes:
+
+1. **Detección de Overlays**: Al hacer clic derecho, la extensión utiliza `elementsFromPoint` para atravesar capas transparentes y encontrar el `<img>` real o el `background-image` de CSS.
+2. **Captura Preventiva**: En el momento del clic derecho, se inicia una descarga silenciosa en el *background script*. Esto asegura que la imagen se capture incluso si el comando "Copiar imagen" nativo del navegador falla o es bloqueado por el sitio web.
+3. **Menú "Capturar imagen con EasySS"**: Un acceso directo en el menú contextual de Chrome que garantiza la obtención de la imagen en máxima resolución, saltándose cualquier restricción de la interfaz de usuario.
+
+## 5. Conclusión
+La "magia" de EasySS no está en interceptar tus comandos de Windows, sino en ser un observador experto del portapapeles y un navegador inteligente del DOM. Esto garantiza compatibilidad total con redes sociales y herramientas de captura externas.

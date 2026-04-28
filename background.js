@@ -1,36 +1,132 @@
 // background.js
+let lastRightClickedImageUrl = null;
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'GET_RECENT_DOWNLOADS') {
-    getRecentImageDownloads().then(sendResponse);
-    return true; // Keep channel open for async response
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "captureImage",
+    title: "Capturar imagen con EasySS",
+    contexts: ["all"]
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "captureImage") {
+    const url = info.srcUrl || lastRightClickedImageUrl;
+    if (url) {
+      fetchImageAsDataUrl(url).then(dataUrl => {
+        if (dataUrl) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'IMAGE_CAPTURED_CONTEXT_MENU',
+            dataUrl: dataUrl,
+            srcUrl: url
+          }).catch(err => console.log("Tab not ready for message", err));
+        }
+      });
+    }
   }
 });
 
-async function getRecentImageDownloads() {
+async function fetchImageAsDataUrl(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.error("Error fetching image:", err);
+    return null;
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'PREEMPTIVE_CAPTURE') {
+    lastRightClickedImageUrl = message.url;
+    fetchImageAsDataUrl(message.url).then(dataUrl => {
+      if (dataUrl) {
+        chrome.storage.local.set({ 
+          preemptiveImage: {
+            dataUrl: dataUrl,
+            timestamp: Date.now(),
+            url: message.url
+          }
+        });
+      }
+    });
+    return;
+  }
+  if (message.type === 'GET_RECENT_DOWNLOADS') {
+    getRecentDownloads('image').then(sendResponse);
+    return true;
+  }
+  if (message.type === 'GET_RECENT_DOCUMENTS') {
+    getRecentDownloads('document').then(sendResponse);
+    return true;
+  }
+  if (message.type === 'ERASE_DOWNLOAD') {
+    chrome.downloads.erase({ id: message.id }, () => sendResponse({ success: true }));
+    return true;
+  }
+});
+
+async function getRecentDownloads(type = 'image') {
   return new Promise((resolve) => {
-    // Search for images in downloads
     chrome.downloads.search({
-      limit: 10,
+      limit: 20, // Search more to find items from months ago
       orderBy: ['-startTime'],
       state: 'complete'
     }, (items) => {
-      const imageItems = items
-        .filter(item => {
-          // Filter by MIME type or extension
-          const isImage = item.mime && item.mime.startsWith('image/');
-          const hasImageExt = /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(item.filename);
-          return isImage || hasImageExt;
-        })
-        .map(item => ({
-          id: item.id,
-          url: item.url,
-          filename: item.filename.split(/[\\/]/).pop(), // Get just the name
-          mime: item.mime,
-          timestamp: new Date(item.startTime).getTime()
-        }));
-      
-      resolve(imageItems.slice(0, 5)); // Return top 5
+      const filtered = [];
+
+      items.forEach(item => {
+        // Smart Cleanup: If file no longer exists, erase it from history
+        if (item.exists === false) {
+          chrome.downloads.erase({ id: item.id });
+          return;
+        }
+
+        const ext = item.filename.split('.').pop().toLowerCase();
+
+        if (type === 'image') {
+          const isImg = item.mime && item.mime.startsWith('image/');
+          const hasImgExt = /\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i.test(item.filename);
+          if (isImg || hasImgExt) {
+            filtered.push({
+              id: item.id,
+              url: item.url,
+              filename: item.filename.split(/[\\/]/).pop(),
+              timestamp: new Date(item.startTime).getTime()
+            });
+          }
+        } else {
+          // Documents
+          const isDoc = item.mime && (
+            item.mime.includes('pdf') ||
+            item.mime.includes('word') ||
+            item.mime.includes('excel') ||
+            item.mime.includes('officedocument') ||
+            item.mime.includes('powerpoint') ||
+            item.mime.includes('text/plain')
+          );
+          const hasDocExt = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$/i.test(item.filename);
+          // Ensure it's not an image extension
+          const isNotImg = !/\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i.test(item.filename);
+
+          if ((isDoc || hasDocExt) && isNotImg) {
+            filtered.push({
+              id: item.id,
+              url: item.url,
+              filename: item.filename.split(/[\\/]/).pop(),
+              timestamp: new Date(item.startTime).getTime()
+            });
+          }
+        }
+      });
+
+      // Return more results to allow months of history
+      resolve(type === 'image' ? filtered.slice(0, 100) : filtered.slice(0, 50));
     });
   });
 }

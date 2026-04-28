@@ -11,7 +11,14 @@ EasySS utiliza **IndexedDB** para almacenar las capturas. A diferencia de `local
 - **Privacidad**: Ninguna página web (como WhatsApp o Facebook) puede "ver" o consultar la base de datos de EasySS. Tus capturas están aisladas en un entorno seguro.
 - **Local Primero**: Los datos nunca salen de tu computadora hacia nuestros servidores. Todo el procesamiento y almacenamiento es local.
 
-## 2. Transferencia de Datos sin Restricciones (CSP Bypass)
+## 2. Sistema de Respaldo Manual (Eternidad)
+
+Dado que Chrome elimina todos los datos de una extensión al desinstalarla, se ha implementado un sistema de **Importación/Exportación**:
+- **Exportar (.easyss)**: Serializa todo el historial de IndexedDB (incluyendo blobs convertidos a Base64) en un solo archivo JSON.
+- **Importar**: Permite restaurar el historial completo en una nueva instalación simplemente seleccionando el archivo de respaldo.
+- **Almacenamiento en Disco**: Este método garantiza que el usuario tenga el control físico de sus capturas fuera del entorno limitado del navegador.
+
+## 3. Transferencia de Datos sin Restricciones (CSP Bypass)
 
 Las políticas de seguridad de contenido (CSP) de sitios como GitHub o WhatsApp a menudo bloquean la carga de imágenes desde URLs externas o incluso desde `blob:` URLs generadas dinámicamente.
 

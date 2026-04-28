@@ -3,15 +3,61 @@ let currentDomInput = null;
 let currentProgrammaticInputId = null;
 let modalIframe = null;
 let ignoreNextDomClick = false;
+let isModalOpen = false;
+let lastFallbackTime = 0;
+const FALLBACK_COOLDOWN = 2000;
+
+function isContextInvalid() {
+  return typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.getURL;
+}
+
+let lastRightClickedImageUrl = null;
+document.addEventListener('contextmenu', (e) => {
+  const elements = document.elementsFromPoint(e.clientX, e.clientY);
+  for (const el of elements) {
+    let url = null;
+    if (el.tagName === 'IMG' && el.src) {
+      url = el.src;
+    } else {
+      const bg = window.getComputedStyle(el).backgroundImage;
+      if (bg && bg !== 'none' && bg.startsWith('url(')) {
+        url = bg.match(/url\("?(.*?)"?\)/)[1];
+      }
+    }
+
+    if (url) {
+      lastRightClickedImageUrl = url;
+      // Pre-emptive capture: fetch it now so it's ready if they copy or open the modal
+      chrome.runtime.sendMessage({ 
+        type: 'PREEMPTIVE_CAPTURE', 
+        url: url 
+      }).catch(() => {});
+      return;
+    }
+  }
+}, true);
+
+let lastShiftTime = 0;
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Shift') {
+    const now = Date.now();
+    if (now - lastShiftTime < 350) { // 350ms for double click
+      openModal(); // Manual mode
+    }
+    lastShiftTime = now;
+  }
+});
+
+
 
 // --- 1. LISTEN FOR PROGRAMMATIC CLICKS FROM MAIN_WORLD.JS ---
 window.addEventListener('message', function(e) {
   if (!e.data || e.data.source !== 'EASYSS_PAGE_SCRIPT') return;
+  if (isContextInvalid()) return;
   
   if (e.data.type === 'CLICK_INTERCEPTED') {
-    currentProgrammaticInputId = e.data.inputId;
-    currentDomInput = null; // Clear DOM input just in case
-    openModal();
+    if (Date.now() - lastFallbackTime < FALLBACK_COOLDOWN) return;
+    openModal(null, e.data.inputId);
   }
 });
 
@@ -26,11 +72,11 @@ document.addEventListener('click', function(e) {
         ignoreNextDomClick = false;
         return; // Allow default behavior
       }
+
+      if (Date.now() - lastFallbackTime < FALLBACK_COOLDOWN) return;
       
       e.preventDefault();
-      currentDomInput = target;
-      currentProgrammaticInputId = null;
-      openModal();
+      openModal(target);
       return;
     }
     target = target.parentNode;
@@ -58,12 +104,20 @@ document.addEventListener('paste', function(e) {
 }, true);
 
 
-// --- 4. MODAL MANAGEMENT ---
-function openModal() {
+function openModal(input = null, programmaticId = null) {
+  if (isContextInvalid()) {
+    console.log("EasySS: Context invalidated. Please refresh the page to use the extension.");
+    return;
+  }
   if (modalIframe) return;
   
+  currentDomInput = input;
+  currentProgrammaticInputId = programmaticId;
+  isModalOpen = true;
+
   modalIframe = document.createElement('iframe');
-  modalIframe.src = chrome.runtime.getURL('modal.html');
+  const hasTarget = (input || programmaticId) ? 'true' : 'false';
+  modalIframe.src = chrome.runtime.getURL(`modal.html?hasTarget=${hasTarget}`);
   modalIframe.id = 'easyss-extension-modal-iframe';
   
   // Important: allow clipboard access in the iframe
@@ -102,6 +156,27 @@ function openModal() {
   }, 100);
 }
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'IMAGE_CAPTURED_CONTEXT_MENU') {
+    if (isModalOpen && modalIframe) {
+      modalIframe.contentWindow.postMessage({
+        type: 'EXTERNAL_IMAGE_CAPTURED',
+        dataUrl: message.dataUrl
+      }, '*');
+    } else {
+      openModal();
+      setTimeout(() => {
+        if (modalIframe) {
+          modalIframe.contentWindow.postMessage({
+            type: 'EXTERNAL_IMAGE_CAPTURED',
+            dataUrl: message.dataUrl
+          }, '*');
+        }
+      }, 1000);
+    }
+  }
+});
+
 window.addEventListener('message', function(e) {
   if (!e.data || e.data.source !== 'EASYSS_EXTENSION') return;
   
@@ -115,7 +190,7 @@ window.addEventListener('message', function(e) {
       }, '*');
     }
     closeModal();
-    } else if (e.data.type === 'FILE_SELECTED') {
+  } else if (e.data.type === 'FILE_SELECTED') {
     if (currentProgrammaticInputId) {
       // Send to main world script
       window.postMessage({
@@ -143,11 +218,17 @@ window.addEventListener('message', function(e) {
         dt.items.add(file);
         currentDomInput.files = dt.files;
         
-        const event = new Event('change', { bubbles: true });
-        currentDomInput.dispatchEvent(event);
+        const eventChange = new Event('change', { bubbles: true });
+        const eventInput = new Event('input', { bubbles: true });
+        currentDomInput.dispatchEvent(eventInput);
+        currentDomInput.dispatchEvent(eventChange);
+        currentDomInput.dispatchEvent(new Event('blur', { bubbles: true }));
       } catch (err) {
         console.error("EasySS: Error processing file", err);
       }
+    } else {
+      // Manual mode (Double Shift): Try to paste the file into the active element
+      pasteFileToActiveElement(e.data.dataUrl, e.data.filename);
     }
     closeModal();
   } else if (e.data.type === 'OPEN_DEFAULT') {
@@ -157,14 +238,63 @@ window.addEventListener('message', function(e) {
         action: 'OPEN_DEFAULT',
         inputId: currentProgrammaticInputId
       }, '*');
-    }
- else if (currentDomInput) {
+      closeModal();
+    } else if (currentDomInput) {
+      const input = currentDomInput;
+      // CRITICAL: Set this so main_world.js and content.js ignore the next click
+      input.dataset.easyssIgnoreNext = "true";
       ignoreNextDomClick = true;
-      currentDomInput.click();
+      lastFallbackTime = Date.now();
+      document.documentElement.dataset.easyssCooldown = "true";
+      setTimeout(() => delete document.documentElement.dataset.easyssCooldown, FALLBACK_COOLDOWN);
+      
+      // Trigger click IMMEDIATELY while the user gesture from the iframe message is still fresh
+      input.click();
+      closeModal();
+    } else {
+      // No target input! Trigger the local file picker in the modal but HIDE the modal first
+      if (modalIframe && modalIframe.contentWindow) {
+        lastFallbackTime = Date.now();
+        document.documentElement.dataset.easyssCooldown = "true";
+        setTimeout(() => delete document.documentElement.dataset.easyssCooldown, FALLBACK_COOLDOWN);
+
+        modalIframe.style.opacity = '0';
+        modalIframe.style.pointerEvents = 'none';
+        modalIframe.contentWindow.postMessage({ source: 'EASYSS_CONTENT_SCRIPT', type: 'TRIGGER_LOCAL_FILE_PICKER' }, '*');
+      }
     }
-    closeModal();
   }
 });
+
+async function pasteFileToActiveElement(dataUrl, filename) {
+  try {
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    const blob = new Blob([u8arr], { type: mime });
+    const file = new File([blob], filename || 'file.png', { type: mime });
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    
+    const activeEl = document.activeElement;
+    if (activeEl) {
+      // Dispatch a paste event which most modern web apps (WhatsApp, Discord, etc) listen to
+      const pasteEvent = new ClipboardEvent('paste', {
+        clipboardData: dataTransfer,
+        bubbles: true,
+        cancelable: true
+      });
+      activeEl.dispatchEvent(pasteEvent);
+      console.log("EasySS: Attempted to auto-paste file into", activeEl.tagName);
+    }
+  } catch (err) {
+    console.error("EasySS: Error auto-pasting file", err);
+  }
+}
 
 function closeModal() {
   if (modalIframe) {
@@ -174,6 +304,7 @@ function closeModal() {
     modalIframe.remove();
     modalIframe = null;
   }
+  isModalOpen = false;
   currentDomInput = null;
   currentProgrammaticInputId = null;
 }
