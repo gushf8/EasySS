@@ -46,7 +46,7 @@ document.addEventListener('keydown', (e) => {
     }
     lastShiftTime = now;
   }
-});
+}, true); // Use capture phase to bypass WhatsApp's event blocking
 
 
 

@@ -2,6 +2,7 @@
 
 ### [Actualización 1.0.1] - 2026-04-28: Universalidad y Persistencia
 - **FIX Facebook/Instagram**: Corregido el problema donde las imágenes "Copiadas" normalmente no cargaban. Ahora se detectan mediante un sistema pre-emptivo al hacer clic derecho.
+- **FIX WhatsApp**: Corregido el error donde el "Doble Shift" no abría el selector. Ahora se usa la fase de captura de eventos para saltar el bloqueo de WhatsApp.
 - **FEATURE Menú Contextual**: Añadida la opción "Capturar imagen con EasySS" para forzar la captura de cualquier imagen protegida.
 - **FEATURE Persistencia Eterna**: Implementado sistema de Exportar/Importar historial (.easyss) para sobrevivir a desinstalaciones.
 - **FEATURE Descarga Directa**: Añadido botón de descarga a cada captura para guardar archivos físicamente.
