@@ -12,7 +12,10 @@ function isContextInvalid() {
 }
 
 let lastRightClickedImageUrl = null;
-document.addEventListener('contextmenu', (e) => {
+const handleCaptureEvent = (e) => {
+  const isRightClick = e.type === 'contextmenu' || (e.type === 'mousedown' && e.button === 2);
+  if (!isRightClick) return;
+
   const elements = document.elementsFromPoint(e.clientX, e.clientY);
   for (const el of elements) {
     let url = null;
@@ -21,13 +24,13 @@ document.addEventListener('contextmenu', (e) => {
     } else {
       const bg = window.getComputedStyle(el).backgroundImage;
       if (bg && bg !== 'none' && bg.startsWith('url(')) {
-        url = bg.match(/url\("?(.*?)"?\)/)[1];
+        const match = bg.match(/url\("?(.*?)"?\)/);
+        if (match) url = match[1];
       }
     }
 
     if (url) {
       lastRightClickedImageUrl = url;
-      // Pre-emptive capture: fetch it now so it's ready if they copy or open the modal
       chrome.runtime.sendMessage({ 
         type: 'PREEMPTIVE_CAPTURE', 
         url: url 
@@ -35,10 +38,13 @@ document.addEventListener('contextmenu', (e) => {
       return;
     }
   }
-}, true);
+};
+
+window.addEventListener('contextmenu', handleCaptureEvent, true);
+window.addEventListener('mousedown', handleCaptureEvent, true);
 
 let lastShiftTime = 0;
-document.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', (e) => {
   if (e.key === 'Shift') {
     const now = Date.now();
     if (now - lastShiftTime < 350) { // 350ms for double click
@@ -46,7 +52,7 @@ document.addEventListener('keydown', (e) => {
     }
     lastShiftTime = now;
   }
-}, true); // Use capture phase to bypass WhatsApp's event blocking
+}, true); // Use window + capture phase for maximum priority
 
 
 
@@ -141,12 +147,16 @@ function openModal(input = null, programmaticId = null) {
   
   document.documentElement.appendChild(modalIframe);
   
-  // Keep focus on the iframe
-  const focusHandler = () => {
-    if (modalIframe) modalIframe.focus();
-  };
-  window.addEventListener('blur', focusHandler);
-  modalIframe._focusHandler = focusHandler;
+  // Aggressive Focus Management for sites like WhatsApp/FB
+  const focusInterval = setInterval(() => {
+    if (modalIframe && isModalOpen) {
+      modalIframe.focus();
+      // Inform the modal to also try to gain focus internally
+      modalIframe.contentWindow.postMessage({ type: 'FOCUS_MODAL' }, '*');
+    } else {
+      clearInterval(focusInterval);
+    }
+  }, 300);
   
   setTimeout(() => {
     if (modalIframe) {

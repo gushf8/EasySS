@@ -212,10 +212,7 @@ async function processAndSendBlob(blob, filename = null) {
 
 async function checkClipboard() {
   let newImageAddedHash = null;
-  
-  // Wait a bit for focus to settle and clipboard data to be ready (critical for sites like FB)
-  await new Promise(r => setTimeout(r, 200));
-
+  // NO DELAY: Instant reading to beat site focus-stealing
   try {
     if (!navigator.clipboard || !navigator.clipboard.read) {
       return null;
@@ -653,6 +650,9 @@ window.addEventListener('focus', refreshUI);
 
 document.addEventListener('DOMContentLoaded', async () => {
   await checkActivation();
+  
+  // Active Polling: Check for new clipboard items every 1.2s while open
+  setInterval(refreshUI, 1200);
   
   document.getElementById('closeBtn').addEventListener('click', () => sendMessage('CLOSE_MODAL'));
   document.getElementById('refreshBtn').addEventListener('click', () => {
