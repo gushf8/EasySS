@@ -250,13 +250,42 @@ body {
 }
 
 .image-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 4px 24px 4px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
 }
 
-.grid-cols-4 {
-  grid-template-columns: repeat(4, 1fr);
+.image-grid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.image-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.image-grid::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 10px;
+}
+
+.image-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  width: 280px;
+  flex-shrink: 0;
+  aspect-ratio: 16/10;
+  background: #00000040;
+  border: 1px solid var(--border-modal);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Scrollbar */
@@ -301,7 +330,9 @@ body {
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  aspect-ratio: 4/3;
+  width: 280px;
+  flex-shrink: 0;
+  aspect-ratio: 16/10;
   background: #00000040;
   border: 1px solid var(--border-modal);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -382,6 +413,22 @@ body {
   letter-spacing: 0.05em;
   z-index: 2;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.badge-source {
+  position: absolute;
+  top: 12px; right: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .loading, .empty-state {
@@ -569,3 +616,5 @@ body {
 .activation-card input:focus {
   border-color: var(--accent);
 }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

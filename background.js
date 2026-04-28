@@ -53,6 +53,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             url: message.url
           }
         });
+        // Broadcast to any open modal
+        chrome.runtime.sendMessage({
+          type: 'EXTERNAL_IMAGE_CAPTURED',
+          dataUrl: dataUrl
+        }).catch(() => {}); // No one listening is fine
       }
     });
     return;
@@ -69,7 +74,44 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.downloads.erase({ id: message.id }, () => sendResponse({ success: true }));
     return true;
   }
+  if (message.type === 'REFRESH_CLIPBOARD_UNIVERSAL') {
+    handleUniversalClipboardRequest();
+    return;
+  }
+  if (message.type === 'CLIPBOARD_DATA_FROM_OFFSCREEN') {
+    // We got an image from the offscreen document!
+    const dataUrl = message.dataUrl;
+    // Notify all extension parts
+    chrome.runtime.sendMessage({
+      type: 'EXTERNAL_IMAGE_CAPTURED',
+      dataUrl: dataUrl
+    }).catch(() => {});
+    return;
+  }
 });
+
+async function handleUniversalClipboardRequest() {
+  try {
+    await setupOffscreenDocument();
+    // Give it a tiny bit of time to initialize its listener
+    setTimeout(() => {
+      chrome.runtime.sendMessage({
+        type: 'READ_CLIPBOARD_OFFSCREEN'
+      }).catch(() => {});
+    }, 50);
+  } catch (err) {
+    console.error("Background: Failed to handle universal clipboard", err);
+  }
+}
+
+async function setupOffscreenDocument() {
+  if (await chrome.offscreen.hasDocument()) return;
+  await chrome.offscreen.createDocument({
+    url: 'offscreen.html',
+    reasons: ['CLIPBOARD'],
+    justification: 'Leer el portapapeles universalmente independientemente de la pestaña activa.'
+  });
+}
 
 async function getRecentDownloads(type = 'image') {
   return new Promise((resolve) => {

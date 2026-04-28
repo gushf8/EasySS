@@ -19,7 +19,7 @@
       "128": "icons/icon128.png"
     }
   },
-  "permissions": ["clipboardRead", "storage", "downloads", "contextMenus"],
+  "permissions": ["clipboardRead", "storage", "downloads", "contextMenus", "offscreen"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
@@ -38,7 +38,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["modal.html", "modal.css", "modal.js"],
+      "resources": ["modal.html", "modal.css", "modal.js", "offscreen.html", "offscreen.js"],
       "matches": ["<all_urls>"]
     }
   ]

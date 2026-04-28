@@ -4,6 +4,7 @@ let currentProgrammaticInputId = null;
 let modalIframe = null;
 let ignoreNextDomClick = false;
 let isModalOpen = false;
+let lastActiveElement = null;
 let lastFallbackTime = 0;
 const FALLBACK_COOLDOWN = 2000;
 
@@ -31,10 +32,19 @@ const handleCaptureEvent = (e) => {
 
     if (url) {
       lastRightClickedImageUrl = url;
+      // Also send it to background to pre-save it
       chrome.runtime.sendMessage({ 
         type: 'PREEMPTIVE_CAPTURE', 
         url: url 
       }).catch(() => {});
+      
+      // If modal is open, send it directly too
+      if (modalIframe) {
+        modalIframe.contentWindow.postMessage({
+          type: 'EXTERNAL_IMAGE_CAPTURED',
+          dataUrl: url // Modal handleExternalImage can handle both URLs and dataURLs
+        }, '*');
+      }
       return;
     }
   }
@@ -43,44 +53,33 @@ const handleCaptureEvent = (e) => {
 window.addEventListener('contextmenu', handleCaptureEvent, true);
 window.addEventListener('mousedown', handleCaptureEvent, true);
 
-async function readClipboardAndSave() {
-  try {
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-      const imageTypes = item.types.filter(type => type.startsWith('image/'));
-      if (imageTypes.length > 0) {
-        const blob = await item.getType(imageTypes[0]);
-        // Convert blob to DataURL to send to background
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          chrome.runtime.sendMessage({ 
-            type: 'PREEMPTIVE_CAPTURE', 
-            url: reader.result,
-            isDataUrl: true
-          }).catch(() => {});
-        };
-        reader.readAsDataURL(blob);
-      }
-    }
-  } catch (err) {
-    // Normal if no focus or no image
-  }
-}
+// Clipboard reading is now handled only by the modal to avoid permission prompts on the host page
 
 let lastShiftTime = 0;
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Shift') {
     const now = Date.now();
     if (now - lastShiftTime < 350) { // 350ms for double click
-      readClipboardAndSave().then(() => {
-        openModal(); // Manual mode
-      });
+      openModal(); // Manual mode - the modal will read the clipboard itself
     }
     lastShiftTime = now;
   }
 }, true); // Use window + capture phase for maximum priority
 
+// Notify background when window regains focus or visibility (to detect new screenshots universally)
+function triggerUniversalRefresh() {
+  if (isModalOpen) {
+    chrome.runtime.sendMessage({ type: 'REFRESH_CLIPBOARD_UNIVERSAL' }).catch(() => {});
+    if (modalIframe && modalIframe.contentWindow) {
+      modalIframe.contentWindow.postMessage({ type: 'FOCUS_MODAL' }, '*');
+    }
+  }
+}
 
+window.addEventListener('focus', triggerUniversalRefresh, true);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') triggerUniversalRefresh();
+});
 
 // --- 1. LISTEN FOR PROGRAMMATIC CLICKS FROM MAIN_WORLD.JS ---
 window.addEventListener('message', function(e) {
@@ -92,8 +91,6 @@ window.addEventListener('message', function(e) {
     openModal(null, e.data.inputId);
   }
 });
-
-
 
 // --- 3. LISTEN FOR REAL DOM CLICKS ---
 document.addEventListener('click', function(e) {
@@ -146,6 +143,9 @@ function openModal(input = null, programmaticId = null) {
   currentDomInput = input;
   currentProgrammaticInputId = programmaticId;
   isModalOpen = true;
+  
+  // Remember what was focused before opening the modal (for Double Shift paste)
+  lastActiveElement = document.activeElement;
 
   modalIframe = document.createElement('iframe');
   const hasTarget = (input || programmaticId) ? 'true' : 'false';
@@ -225,8 +225,7 @@ window.addEventListener('message', function(e) {
         dataUrl: e.data.dataUrl,
         filename: e.data.filename
       }, '*');
-    }
- else if (currentDomInput) {
+    } else if (currentDomInput) {
       try {
         const parts = e.data.dataUrl.split(',');
         const mime = parts[0].match(/:(.*?);/)[1];
@@ -257,6 +256,12 @@ window.addEventListener('message', function(e) {
     }
     closeModal();
   } else if (e.data.type === 'OPEN_DEFAULT') {
+    // Set global fallback state to prevent immediate re-interception
+    ignoreNextDomClick = true;
+    lastFallbackTime = Date.now();
+    document.documentElement.dataset.easyssCooldown = "true";
+    setTimeout(() => delete document.documentElement.dataset.easyssCooldown, FALLBACK_COOLDOWN);
+
     if (currentProgrammaticInputId) {
       window.postMessage({
         source: 'EASYSS_CONTENT_SCRIPT',
@@ -266,23 +271,12 @@ window.addEventListener('message', function(e) {
       closeModal();
     } else if (currentDomInput) {
       const input = currentDomInput;
-      // CRITICAL: Set this so main_world.js and content.js ignore the next click
       input.dataset.easyssIgnoreNext = "true";
-      ignoreNextDomClick = true;
-      lastFallbackTime = Date.now();
-      document.documentElement.dataset.easyssCooldown = "true";
-      setTimeout(() => delete document.documentElement.dataset.easyssCooldown, FALLBACK_COOLDOWN);
-      
-      // Trigger click IMMEDIATELY while the user gesture from the iframe message is still fresh
       input.click();
       closeModal();
     } else {
       // No target input! Trigger the local file picker in the modal but HIDE the modal first
       if (modalIframe && modalIframe.contentWindow) {
-        lastFallbackTime = Date.now();
-        document.documentElement.dataset.easyssCooldown = "true";
-        setTimeout(() => delete document.documentElement.dataset.easyssCooldown, FALLBACK_COOLDOWN);
-
         modalIframe.style.opacity = '0';
         modalIframe.style.pointerEvents = 'none';
         modalIframe.contentWindow.postMessage({ source: 'EASYSS_CONTENT_SCRIPT', type: 'TRIGGER_LOCAL_FILE_PICKER' }, '*');
@@ -305,9 +299,12 @@ async function pasteFileToActiveElement(dataUrl, filename) {
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     
-    const activeEl = document.activeElement;
+    const activeEl = lastActiveElement || document.activeElement;
     if (activeEl) {
-      // Dispatch a paste event which most modern web apps (WhatsApp, Discord, etc) listen to
+      // Focus it first to be sure
+      if (activeEl.focus) activeEl.focus();
+      
+      // Dispatch a paste event which most modern web apps (WhatsApp, Discord, ChatGPT, etc) listen to
       const pasteEvent = new ClipboardEvent('paste', {
         clipboardData: dataTransfer,
         bubbles: true,

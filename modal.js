@@ -131,7 +131,7 @@ async function deleteItemPermanently(element, id) {
   }
 }
 
-async function addImageToDB(blob) {
+async function addImageToDB(blob, source = 'SS') {
   const hash = await hashBlob(blob);
   
   return new Promise((resolve, reject) => {
@@ -145,13 +145,16 @@ async function addImageToDB(blob) {
         // Already exists, update timestamp to move it to the top
         const item = request.result;
         item.timestamp = Date.now();
+        // Update source if it was previously undefined or if we want to prioritize the new source
+        item.source = source; 
         store.put(item);
         resolve(item);
       } else {
         const item = {
           blob: blob,
           timestamp: Date.now(),
-          hash: hash
+          hash: hash,
+          source: source
         };
         const addReq = store.add(item);
         addReq.onsuccess = () => {
@@ -225,7 +228,7 @@ async function checkClipboard() {
       const imageType = item.types.find(t => t.startsWith('image/'));
       if (imageType) {
         const blob = await item.getType(imageType);
-        const savedItem = await addImageToDB(blob);
+        const savedItem = await addImageToDB(blob, 'SS');
         newImageAddedHash = savedItem.hash;
         break;
       }
@@ -238,6 +241,8 @@ async function checkClipboard() {
 }
 
 async function refreshUI() {
+  if (!db) return; // Ensure database is ready
+
   try {
     // 0. Check for pre-emptive capture (Right-click bypass)
     try {
@@ -258,8 +263,9 @@ async function refreshUI() {
     }
 
     // 1. Get clipboard image (Only if we have focus to avoid site flickering)
+    let newHash = null;
     if (document.hasFocus()) {
-      await checkClipboard();
+      newHash = await checkClipboard();
     }
     
     // 2. Get history from DB
@@ -297,8 +303,8 @@ async function refreshUI() {
       type: 'download'
     }));
 
-    renderSection('clipboardGrid', clipboardItems.slice(0, 40), newHash); 
-    renderSection('downloadsGrid', imageItems.slice(0, 40), null); 
+    renderSection('clipboardGrid', clipboardItems.slice(0, 8), newHash); 
+    renderSection('downloadsGrid', imageItems.slice(0, 8), null); 
     renderDocuments(downloadDocuments);
     
   } catch (err) {
@@ -446,6 +452,9 @@ function renderSection(gridId, items, newHash) {
       badgeHtml = '<div class="badge-new">Nueva</div>';
     } else if (item.type === 'download') {
       badgeHtml = '<div class="badge-download">Descarga</div>';
+    } else if (item.source) {
+      const sourceLabel = item.source === 'SS' ? 'SS' : 'Copiado';
+      badgeHtml = `<div class="badge-source">${sourceLabel}</div>`;
     }
     
     const date = new Date(item.timestamp);
@@ -545,16 +554,27 @@ window.addEventListener('message', (e) => {
   }
 });
 
+// Also listen for messages from background script (broadcasts)
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'EXTERNAL_IMAGE_CAPTURED') {
+      handleExternalImage(message.dataUrl);
+    }
+  });
+}
+
 async function handleExternalImage(dataUrl) {
   if (!dataUrl) return;
   try {
     const response = await fetch(dataUrl);
     const blob = await response.blob();
-    await addImageToDB(blob);
+    await addImageToDB(blob, 'Copiado');
     showToast("Imagen capturada con éxito");
     refreshUI();
   } catch (err) {
     console.error("Error handling external image:", err);
+    // If fetch failed (likely CORS), we don't do anything here as the background 
+    // script is likely already fetching it and will broadcast the DataURL soon.
   }
 }
 
@@ -653,14 +673,17 @@ window.addEventListener('focus', refreshUI);
 document.addEventListener('DOMContentLoaded', async () => {
   await checkActivation();
   
-  // Initial refresh
-  refreshUI();
-  
   document.getElementById('closeBtn').addEventListener('click', () => sendMessage('CLOSE_MODAL'));
   document.getElementById('refreshBtn').addEventListener('click', () => {
     const btn = document.getElementById('refreshBtn');
     btn.style.transform = 'rotate(360deg)';
     btn.style.transition = 'transform 0.5s ease';
+    
+    // Request universal clipboard check
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({ type: 'REFRESH_CLIPBOARD_UNIVERSAL' }).catch(() => {});
+    }
+
     refreshUI().then(() => {
       setTimeout(() => { btn.style.transform = ''; btn.style.transition = ''; }, 500);
     });
@@ -738,7 +761,7 @@ document.addEventListener('paste', async (e) => {
       showToast("Imagen pegada con éxito");
       
       // Save to DB for history
-      await addImageToDB(newImageBlob);
+      await addImageToDB(newImageBlob, 'SS');
       
       // Auto-send immediately
       await processAndSendBlob(newImageBlob);
