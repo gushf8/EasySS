@@ -1,5 +1,13 @@
 # Registro de Reparaciones Realizadas en EasySS Extension
 
+### [Actualización 1.0.2] - 2026-04-28: Bypass Universal y Rediseño de UI
+- **FIX Universal Clipboard (Instagram/FB)**: Implementado el patrón de **Offscreen Documents** para leer el portapapeles desde el origen de la extensión, saltando los bloqueos de CSP y permisos de sitios restrictivos.
+- **FIX File Explorer Loop**: Corregido el error donde el explorador de Windows se cerraba y reabría al primer clic; ahora la sincronización de flags entre scripts es total.
+- **FIX Google Permissions**: Eliminado el molesto aviso de "google.com quiere leer el portapapeles" al mover la detección de capturas fuera del contexto de la página host.
+- **FEATURE Doble Shift Inteligente**: Ahora la extensión recuerda el cursor y el campo de chat donde estabas escribiendo para realizar un pegado automático instantáneo al elegir la imagen.
+- **MEJORA UI (Scroll Horizontal)**: Rediseño de las secciones a filas horizontales con scroll, limitando a 8 imágenes visibles para una navegación más rápida y profesional.
+- **FEATURE Etiquetas de Origen**: Añadidas etiquetas visuales ("SS" para portapapeles y "Copiado" para click derecho) para identificar el origen de cada captura.
+
 ### [Actualización 1.0.1] - 2026-04-28: Universalidad y Persistencia
 - **FIX Facebook/Instagram**: Corregido el problema donde las imágenes "Copiadas" normalmente no cargaban. Ahora se detectan mediante un sistema pre-emptivo al hacer clic derecho.
 - **FIX WhatsApp**: Corregido el error donde el "Doble Shift" no abría el selector. Ahora se usa la fase de captura de eventos para saltar el bloqueo de WhatsApp.
