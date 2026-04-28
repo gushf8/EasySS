@@ -257,8 +257,10 @@ async function refreshUI() {
       console.log("Pre-emptive check info:", err);
     }
 
-    // 1. Get clipboard image
-    const newHash = await checkClipboard();
+    // 1. Get clipboard image (Only if we have focus to avoid site flickering)
+    if (document.hasFocus()) {
+      await checkClipboard();
+    }
     
     // 2. Get history from DB
     const dbImages = await getImagesFromDB();
@@ -651,8 +653,8 @@ window.addEventListener('focus', refreshUI);
 document.addEventListener('DOMContentLoaded', async () => {
   await checkActivation();
   
-  // Active Polling: Check for new clipboard items every 1.2s while open
-  setInterval(refreshUI, 1200);
+  // Initial refresh
+  refreshUI();
   
   document.getElementById('closeBtn').addEventListener('click', () => sendMessage('CLOSE_MODAL'));
   document.getElementById('refreshBtn').addEventListener('click', () => {

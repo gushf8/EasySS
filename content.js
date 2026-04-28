@@ -43,12 +43,38 @@ const handleCaptureEvent = (e) => {
 window.addEventListener('contextmenu', handleCaptureEvent, true);
 window.addEventListener('mousedown', handleCaptureEvent, true);
 
+async function readClipboardAndSave() {
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imageTypes = item.types.filter(type => type.startsWith('image/'));
+      if (imageTypes.length > 0) {
+        const blob = await item.getType(imageTypes[0]);
+        // Convert blob to DataURL to send to background
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          chrome.runtime.sendMessage({ 
+            type: 'PREEMPTIVE_CAPTURE', 
+            url: reader.result,
+            isDataUrl: true
+          }).catch(() => {});
+        };
+        reader.readAsDataURL(blob);
+      }
+    }
+  } catch (err) {
+    // Normal if no focus or no image
+  }
+}
+
 let lastShiftTime = 0;
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Shift') {
     const now = Date.now();
     if (now - lastShiftTime < 350) { // 350ms for double click
-      openModal(); // Manual mode
+      readClipboardAndSave().then(() => {
+        openModal(); // Manual mode
+      });
     }
     lastShiftTime = now;
   }
@@ -146,17 +172,6 @@ function openModal(input = null, programmaticId = null) {
   `;
   
   document.documentElement.appendChild(modalIframe);
-  
-  // Aggressive Focus Management for sites like WhatsApp/FB
-  const focusInterval = setInterval(() => {
-    if (modalIframe && isModalOpen) {
-      modalIframe.focus();
-      // Inform the modal to also try to gain focus internally
-      modalIframe.contentWindow.postMessage({ type: 'FOCUS_MODAL' }, '*');
-    } else {
-      clearInterval(focusInterval);
-    }
-  }, 300);
   
   setTimeout(() => {
     if (modalIframe) {
