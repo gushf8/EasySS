@@ -19,5 +19,8 @@ Este documento enumera en orden toda la documentación técnica y de usuario gen
 - **[9_reparaciones_realizadas.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/9_reparaciones_realizadas.md)**: Bitácora de cambios, fixes técnicos y nuevas funcionalidades añadidas.
 - **[4_troubleshooting.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/4_troubleshooting.md)**: Solución a problemas comunes y preguntas frecuentes.
 
+### 5. Futuras Implementaciones
+- **[11_monetizacion_y_seguridad.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/11_monetizacion_y_seguridad.md)**: Propuesta técnica para automatizar ventas con Yape/Plin y proteger el código.
+
 ---
 *Última actualización: 2026-04-28*
