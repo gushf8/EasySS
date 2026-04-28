@@ -177,6 +177,8 @@ function openModal(input = null, programmaticId = null) {
     if (modalIframe) {
       modalIframe.focus();
       modalIframe.contentWindow.postMessage({ type: 'FOCUS_MODAL' }, '*');
+      // Trigger universal refresh immediately when opening
+      chrome.runtime.sendMessage({ type: 'REFRESH_CLIPBOARD_UNIVERSAL' }).catch(() => {});
     }
   }, 100);
 }

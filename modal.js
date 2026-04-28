@@ -214,30 +214,9 @@ async function processAndSendBlob(blob, filename = null) {
 
 
 async function checkClipboard() {
-  let newImageAddedHash = null;
-  // NO DELAY: Instant reading to beat site focus-stealing
-  try {
-    if (!navigator.clipboard || !navigator.clipboard.read) {
-      return null;
-    }
-
-    const items = await navigator.clipboard.read();
-    
-    for (const item of items) {
-      // Find the first image type available
-      const imageType = item.types.find(t => t.startsWith('image/'));
-      if (imageType) {
-        const blob = await item.getType(imageType);
-        const savedItem = await addImageToDB(blob, 'SS');
-        newImageAddedHash = savedItem.hash;
-        break;
-      }
-    }
-  } catch (err) {
-    // This is expected if the user hasn't interacted yet or permission is not granted
-    console.log('Clipboard auto-check info:', err.message);
-  }
-  return newImageAddedHash;
+  // Direct clipboard reading from modal is disabled to avoid "Permissions policy violation"
+  // We rely entirely on the offscreen document via the background script.
+  return null;
 }
 
 async function refreshUI() {
@@ -253,7 +232,7 @@ async function refreshUI() {
         if (Date.now() - timestamp < 120000) {
           const response = await fetch(dataUrl);
           const blob = await response.blob();
-          await addImageToDB(blob);
+          await addImageToDB(blob, 'Copiado');
           // Clear it so we don't add it again on next refresh
           chrome.storage.local.remove('preemptiveImage');
         }
@@ -262,11 +241,10 @@ async function refreshUI() {
       console.log("Pre-emptive check info:", err);
     }
 
-    // 1. Get clipboard image (Only if we have focus to avoid site flickering)
+    // 1. Get clipboard image (Universal approach)
+    // We no longer read directly from the modal to avoid "Permissions policy violation"
+    // instead we rely on the background script's offscreen document broadcast.
     let newHash = null;
-    if (document.hasFocus()) {
-      newHash = await checkClipboard();
-    }
     
     // 2. Get history from DB
     const dbImages = await getImagesFromDB();
