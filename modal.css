@@ -113,7 +113,7 @@ body {
 .icon-btn:hover {
   background: rgba(255,255,255,0.1);
   color: #fff;
-  transform: rotate(90deg);
+  transform: scale(1.1);
 }
 
 .modal-body {
@@ -171,12 +171,15 @@ body {
 
 .doc-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
-  padding: 12px;
+  padding: 14px 12px;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  min-height: 68px;
 }
 
 .doc-item:hover {
@@ -200,15 +203,63 @@ body {
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 80px; /* Protect only meta line from buttons */
 }
 
 .doc-name {
   font-size: 0.85rem;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--text-main);
+  position: relative;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.doc-name-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.copy-doc-btn, .delete-doc-btn, .locate-doc-btn {
+  position: absolute !important;
+  bottom: 8px !important;
+  top: auto !important;
+  transform: scale(0.9);
+  z-index: 10;
+  opacity: 0;
+  background: rgba(15, 15, 20, 0.95) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  width: 24px !important;
+  height: 24px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.delete-doc-btn { right: 8px; }
+.copy-doc-btn { right: 36px; }
+.locate-doc-btn { right: 64px; }
+
+.doc-item:hover .copy-doc-btn,
+.doc-item:hover .delete-doc-btn,
+.doc-item:hover .locate-doc-btn {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .upload-btn {
@@ -261,6 +312,25 @@ body {
   scrollbar-color: var(--accent) transparent;
 }
 
+.trash-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+  padding: 24px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1;
+}
+
+.trash-grid .image-card {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
 .image-grid::-webkit-scrollbar {
   height: 6px;
 }
@@ -296,11 +366,12 @@ body {
 
 .image-card:hover .delete-btn,
 .image-card:hover .copy-btn,
-.image-card:hover .download-btn {
+.image-card:hover .download-btn,
+.image-card:hover .locate-btn {
   opacity: 1;
 }
 
-.delete-btn, .copy-btn, .download-btn {
+.delete-btn, .copy-btn, .download-btn, .locate-btn {
   position: absolute;
   top: 8px;
   width: 28px;
@@ -320,10 +391,12 @@ body {
 .delete-btn { left: 8px; }
 .copy-btn { left: 40px; }
 .download-btn { left: 72px; }
+.locate-btn { left: 104px; }
 
 .delete-btn:hover { background: var(--danger); transform: scale(1.1); }
 .copy-btn:hover { background: var(--accent); transform: scale(1.1); }
 .download-btn:hover { background: #10b981; transform: scale(1.1); }
+.locate-btn:hover { background: #f59e0b; transform: scale(1.1); }
 
 .image-card {
   position: relative;
@@ -429,6 +502,22 @@ body {
   letter-spacing: 0.05em;
   z-index: 2;
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.badge-dimensions {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  color: #e5e7eb;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-family: monospace;
+  font-weight: 600;
+  z-index: 5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
 }
 
 .loading, .empty-state {
@@ -561,6 +650,11 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+.toast.error {
+  background: var(--danger);
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+}
 /* Activation Overlay */
 .activation-overlay {
   position: fixed;
@@ -618,3 +712,93 @@ body {
 }
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Trash System */
+.trash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  animation: fadeIn 0.3s ease;
+}
+
+.trash-container {
+  background: var(--bg-modal);
+  width: 100%;
+  max-width: 1100px;
+  height: 85vh;
+  border-radius: 28px;
+  border: 1px solid var(--border-modal);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.trash-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-modal);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.trash-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.trash-footer {
+  padding: 20px 32px;
+  border-top: 1px solid var(--border-modal);
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.restore-btn {
+  position: absolute;
+  top: 8px;
+  left: 72px;
+  width: 28px;
+  height: 28px;
+  background: rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.restore-btn:hover {
+  background: #10b981;
+  color: white;
+  transform: scale(1.1);
+}
+
+.image-card:hover .restore-btn {
+  opacity: 1;
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}

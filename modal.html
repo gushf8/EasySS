@@ -32,6 +32,9 @@
           </div>
         </div>
         <div class="header-actions">
+          <button id="trashBtn" class="icon-btn" title="Papelera de Reciclaje">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
           <button id="refreshBtn" class="icon-btn" title="Actualizar">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
           </button>
@@ -133,6 +136,26 @@
       </div>
     </div>
   </div>
+  <div id="trashOverlay" class="trash-overlay" style="display: none;">
+    <div class="trash-container">
+      <div class="trash-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <svg style="width:24px;height:24px;color:var(--danger)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          <h3>Papelera de Reciclaje</h3>
+        </div>
+        <button id="closeTrashBtn" class="icon-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div id="trashGrid" class="trash-grid grid-cols-4">
+        <!-- Trash items will be injected here -->
+      </div>
+      <div class="trash-footer">
+        <button id="emptyTrashBtn" class="btn btn-danger" style="background: var(--danger); color: white;">Vaciar Papelera</button>
+      </div>
+    </div>
+  </div>
+  
   <div id="toast" class="toast">
     <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
     <span>Imagen pegada con éxito</span>

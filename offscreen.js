@@ -7,47 +7,98 @@ chrome.runtime.onMessage.addListener((message) => {
 
 async function readClipboard() {
   try {
-    // navigator.clipboard.read() can be very finicky in offscreen documents.
-    // We'll use the 'paste' event listener trick which is often more reliable
-    // in extension contexts when we have 'clipboardRead' permission.
+    const pasteTarget = document.createElement('div');
+    pasteTarget.contentEditable = 'true';
+    document.body.appendChild(pasteTarget);
+    pasteTarget.focus();
     
-    const textArea = document.createElement('textarea');
-    document.body.appendChild(textArea);
-    textArea.focus();
-    
+    let imageFound = false;
+
     // Attempt to read via navigator.clipboard first
     try {
       const items = await navigator.clipboard.read();
       for (const item of items) {
         const imageType = item.types.find(t => t.startsWith('image/'));
         if (imageType) {
-          const blob = await item.getType(imageType);
-          broadcastBlob(blob);
-          document.body.removeChild(textArea);
-          return;
+          try {
+            const blob = await item.getType(imageType);
+            if (blob && blob.size > 0) {
+              broadcastBlob(blob);
+              imageFound = true;
+              break;
+            }
+          } catch(e) {
+            console.log("Offscreen: failed to get blob for", imageType, e);
+          }
         }
       }
     } catch (e) {
-      console.log("Offscreen: navigator.clipboard failed, trying execCommand");
+      console.log("Offscreen: navigator.clipboard failed or not focused", e);
     }
 
-    // Fallback: execCommand('paste') - requires a listener
-    const pasteHandler = (e) => {
-      const items = e.clipboardData.items;
-      for (const item of items) {
-        if (item.type.indexOf('image') !== -1) {
-          const blob = item.getAsFile();
-          broadcastBlob(blob);
-          break;
-        }
-      }
-    };
+    if (!imageFound) {
+      // Fallback: execCommand('paste') - requires a listener
+      const pastePromise = new Promise(resolve => {
+        const pasteHandler = (e) => {
+          let found = false;
+          
+          // 1. Check for files (handles Word images and Windows Explorer file copies)
+          if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+            for (const file of e.clipboardData.files) {
+              if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i)) {
+                broadcastBlob(file);
+                found = true;
+                break;
+              }
+            }
+          }
+          
+          // 2. Check for items
+          if (!found && e.clipboardData.items) {
+            for (const item of e.clipboardData.items) {
+              if (item.type.indexOf('image') !== -1) {
+                const blob = item.getAsFile();
+                if (blob && blob.size > 0) {
+                  broadcastBlob(blob);
+                  found = true;
+                  break;
+                }
+              }
+            }
+          }
 
-    document.addEventListener('paste', pasteHandler, { once: true });
-    document.execCommand('paste');
-    document.removeEventListener('paste', pasteHandler);
+          // 3. Check for HTML base64 images as a last resort
+          if (!found) {
+            const html = e.clipboardData.getData('text/html');
+            if (html) {
+              const match = html.match(/src="(data:image\/[^;]+;base64,[^"]+)"/i);
+              if (match) {
+                fetch(match[1])
+                  .then(res => res.blob())
+                  .then(blob => {
+                    broadcastBlob(blob);
+                  }).catch(err => console.log("Failed to fetch base64 from html", err));
+                found = true; // Resolve early, broadcast will happen async
+              }
+            }
+          }
+
+          resolve(found);
+        };
+
+        document.addEventListener('paste', pasteHandler, { once: true });
+        document.execCommand('paste');
+        // Clean up if paste event never fires
+        setTimeout(() => {
+          document.removeEventListener('paste', pasteHandler);
+          resolve(false);
+        }, 100);
+      });
+
+      await pastePromise;
+    }
     
-    document.body.removeChild(textArea);
+    document.body.removeChild(pasteTarget);
   } catch (err) {
     console.log('Offscreen clipboard total failure:', err.message);
   }

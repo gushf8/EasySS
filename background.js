@@ -74,6 +74,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.downloads.erase({ id: message.id }, () => sendResponse({ success: true }));
     return true;
   }
+  if (message.type === 'SHOW_DOWNLOAD') {
+    chrome.downloads.show(message.id);
+    return;
+  }
   if (message.type === 'REFRESH_CLIPBOARD_UNIVERSAL') {
     handleUniversalClipboardRequest();
     return;
@@ -116,9 +120,10 @@ async function setupOffscreenDocument() {
 async function getRecentDownloads(type = 'image') {
   return new Promise((resolve) => {
     chrome.downloads.search({
-      limit: 20, // Search more to find items from months ago
+      limit: 100, // Search more to find enough valid items
       orderBy: ['-startTime'],
-      state: 'complete'
+      state: 'complete',
+      exists: true
     }, (items) => {
       const filtered = [];
 
@@ -168,7 +173,7 @@ async function getRecentDownloads(type = 'image') {
       });
 
       // Return more results to allow months of history
-      resolve(type === 'image' ? filtered.slice(0, 100) : filtered.slice(0, 50));
+      resolve(type === 'image' ? filtered.slice(0, 100) : filtered.slice(0, 100));
     });
   });
 }

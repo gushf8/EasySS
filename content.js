@@ -115,12 +115,24 @@ document.addEventListener('click', function(e) {
 // --- 3b. PREVENT PASTE LEAKAGE TO PAGE ---
 document.addEventListener('paste', function(e) {
   if (modalIframe) {
-    const items = (e.clipboardData || window.clipboardData).items;
     let hasImage = false;
-    for (const item of items) {
-      if (item.type.indexOf('image') !== -1) {
-        hasImage = true;
-        break;
+    const clipboardData = e.clipboardData || window.clipboardData;
+    
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      for (const file of clipboardData.files) {
+        if (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i)) {
+          hasImage = true;
+          break;
+        }
+      }
+    }
+    
+    if (!hasImage && clipboardData.items) {
+      for (const item of clipboardData.items) {
+        if (item.type.indexOf('image') !== -1) {
+          hasImage = true;
+          break;
+        }
       }
     }
 
@@ -152,6 +164,11 @@ function openModal(input = null, programmaticId = null) {
   modalIframe.src = chrome.runtime.getURL(`modal.html?hasTarget=${hasTarget}`);
   modalIframe.id = 'easyss-extension-modal-iframe';
   
+  // Use Popover API to guarantee top layer rendering above native dialogs
+  if ('popover' in HTMLElement.prototype) {
+    modalIframe.setAttribute('popover', 'manual');
+  }
+  
   // Important: allow clipboard access in the iframe
   modalIframe.setAttribute('allow', 'clipboard-read; clipboard-write');
   
@@ -172,6 +189,15 @@ function openModal(input = null, programmaticId = null) {
   `;
   
   document.documentElement.appendChild(modalIframe);
+  
+  // Actually move it to the Top Layer
+  if (modalIframe.showPopover) {
+    try {
+      modalIframe.showPopover();
+    } catch(e) {
+      console.log("EasySS: Failed to show popover", e);
+    }
+  }
   
   setTimeout(() => {
     if (modalIframe) {

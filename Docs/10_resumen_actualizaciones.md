@@ -23,6 +23,7 @@ Este documento enumera en orden toda la documentación técnica y de usuario gen
 - **[11_monetizacion_y_seguridad.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/11_monetizacion_y_seguridad.md)**: Propuesta técnica para automatizar ventas con Yape/Plin y proteger el código.
 
 - **[12_optimizaciones_offscreen_y_ui.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/12_optimizaciones_offscreen_y_ui.md)**: Explicación del bypass para Instagram/FB mediante Offscreen Documents y el nuevo diseño de UI.
+- **[13_registro_bugs_y_soluciones.md](file:///c:/Users/gushf/Downloads/EasySS-extension/Docs/13_registro_bugs_y_soluciones.md)**: Análisis técnico de bugs (Imágenes Zombie, Toasts falsos, límites de historial) y sus soluciones.
 
 ---
-*Última actualización: 2026-04-28*
+*Última actualización: 2026-04-29*
