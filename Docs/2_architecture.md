@@ -1,5 +1,5 @@
 # Arquitectura Técnica de EasySS - v1.0.2
-
+Última actualización: 2026-05-20
 **EasySS** utiliza una arquitectura robusta de cuatro capas diseñada para maximizar la compatibilidad, saltar restricciones de seguridad (CSP) y ofrecer una experiencia de usuario instantánea sin comprometer la privacidad.
 
 ## Componentes del Sistema
@@ -16,7 +16,7 @@ El mediador principal y gestor de la interfaz en la pestaña activa.
     - Escuchar clics físicos en el DOM (fase de captura) para interceptar subidas antes de que el navegador abra el explorador de archivos.
     - Gestionar el ciclo de vida del IFrame (Selector).
     - **Inyección de Archivos**: Convierte DataURLs en objetos `File` reales y los inyecta en el input usando `DataTransfer`.
-    - **Memoria de Foco**: Rastrea el último elemento activo para permitir el "Pegado Instantáneo" en el modo Doble Shift.
+    - **Memoria de Foco**: Rastrea el último elemento activo para permitir el "Pegado Instantáneo" en el modo Ctrl + Shift.
 - **Sensores**: Escucha eventos de `focus` y `visibilitychange` para disparar refrescos automáticos.
 
 ### 3. Background Service Worker (`background.js`)

@@ -38,6 +38,9 @@
           <button id="refreshBtn" class="icon-btn" title="Actualizar">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
           </button>
+          <button id="settingsBtn" class="icon-btn" title="Configuración">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </button>
           <button id="closeBtn" class="icon-btn" title="Cerrar">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
@@ -46,6 +49,20 @@
       
       <div class="modal-body">
         <div class="main-content">
+          <div class="section-container">
+            <div class="section-header">
+              <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              <h3>Imágenes de la Web</h3>
+            </div>
+            <div id="webCapturedGrid" class="image-grid grid-cols-4">
+              <!-- Items will be injected here -->
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Buscando imágenes de la web...</div>
+              </div>
+            </div>
+          </div>
+
           <div class="section-container">
             <div class="section-header">
               <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -161,6 +178,45 @@
     <span>Imagen pegada con éxito</span>
   </div>
   <input type="file" id="localFileInput" style="display:none" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv">
+  <div id="settingsOverlay" class="settings-overlay" style="display: none;">
+    <div class="settings-container">
+      <div class="settings-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <svg style="width:24px;height:24px;color:var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          <h3>Configuración</h3>
+        </div>
+        <button id="closeSettingsBtn" class="icon-btn">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">Atajo de Teclado</div>
+            <div class="setting-desc">Presiona Ctrl + Shift para abrir EasySS (se desactiva mientras escribes).</div>
+          </div>
+          <select id="shortcutKeySelect" class="btn btn-secondary" style="width: auto;">
+            <option value="CtrlShift">Ctrl + Shift</option>
+            <option value="None">Desactivar</option>
+          </select>
+        </div>
+        
+        <div class="setting-item" style="margin-top: 20px;">
+          <div class="setting-info">
+            <div class="setting-title">Atajo de Navegador (Global)</div>
+            <div class="setting-desc">Configura la combinación de teclas oficial de Chrome.</div>
+          </div>
+          <button id="chromeShortcutsBtn" class="btn btn-secondary" style="width: auto;">
+            Abrir Ajustes de Chrome
+          </button>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button id="saveSettingsBtn" class="btn btn-primary" style="background: var(--accent); color: white;">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
   <script src="modal.js"></script>
 
 </body>

@@ -1,4 +1,5 @@
 # EasySS Image Upload Extension
+Última actualización: 2026-05-20
 
 **EasySS** es una extensión de Chrome diseñada para simplificar la subida de imágenes a cualquier sitio web, permitiéndote seleccionar directamente capturas de pantalla recientes o imágenes del portapapeles sin tener que guardarlas en tu PC primero.
 

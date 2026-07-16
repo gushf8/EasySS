@@ -34,7 +34,7 @@ Se ha migrado de un diseño de cuadrícula (grid) a un sistema de **Scroll Horiz
 
 ## 3. Pegado Inteligente en Modo Manual
 
-En el modo **Doble Shift**, la extensión ahora implementa una lógica de "Memoria de Foco":
+En el modo **Ctrl + Shift**, la extensión ahora implementa una lógica de "Memoria de Foco":
 
 1. **Captura de Foco**: Antes de abrir el panel, `content.js` guarda una referencia al elemento que tenía el cursor (`lastActiveElement`).
 2. **Restauración de Enfoque**: Al seleccionar una imagen, la extensión devuelve el foco inmediatamente al campo de texto original.

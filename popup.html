@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>EasySS Video Downloader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Activation Overlay -->
+  <div id="activationOverlay" class="activation-overlay" style="display: none;">
+    <div class="activation-card">
+      <div class="logo-icon-activation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2>Activar EasySS Video</h2>
+      <p>Introduce la contraseña de activación para continuar.</p>
+      <input type="password" id="activationPassword" placeholder="Contraseña">
+      <button id="activateBtn" class="btn btn-primary">Activar</button>
+      <p id="activationError" style="display: none;">Contraseña incorrecta</p>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-title">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <h2>EasySS Video</h2>
+          <p class="subtitle">Descarga videos de YouTube, Instagram y FB</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Body -->
+    <div class="popup-body">
+      <!-- Auto Detect Card -->
+      <div id="autoDetectCard" class="card auto-detect-card" style="display: none;">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="card-content">
+          <h3>Video detectado en pestaña</h3>
+          <p id="detectedUrlText" class="detected-url-text">youtube.com/watch?v=...</p>
+          <button id="quickDownloadBtn" class="btn btn-accent btn-small">
+            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Descargar este video
+          </button>
+        </div>
+      </div>
+
+      <!-- Manual Input Card -->
+      <div class="card manual-input-card">
+        <h3>Descargar por enlace</h3>
+        <div class="input-group">
+          <input type="text" id="videoUrlInput" placeholder="Pega el enlace del video aquí...">
+          <button id="downloadBtn" class="btn btn-primary">
+            <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Descargar
+          </button>
+        </div>
+      </div>
+
+      <!-- Status Alert Box -->
+      <div id="statusBox" class="status-box" style="display: none;">
+        <div class="spinner-small" id="statusSpinner"></div>
+        <span id="statusText">Procesando descarga de video...</span>
+      </div>
+
+      <!-- History Section -->
+      <div class="history-section">
+        <div class="section-header">
+          <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Videos Descargados</h3>
+        </div>
+        <div id="videosGrid" class="videos-grid">
+          <!-- Videos will be injected here -->
+          <div class="empty-state">
+            <p>No hay videos descargados recientemente</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+    <span>Acción completada</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

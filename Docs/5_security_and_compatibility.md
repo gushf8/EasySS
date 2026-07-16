@@ -1,4 +1,5 @@
 # Permisos Técnicos y Compatibilidad
+Última actualización: 2026-05-20
 
 Para asegurar que **EasySS** funcione correctamente en plataformas con alta seguridad como **WhatsApp Web**, **Facebook**, **GitHub** o **Discord**, se han implementado configuraciones técnicas específicas que evitan bloqueos de seguridad (CSP) o problemas de permisos.
 

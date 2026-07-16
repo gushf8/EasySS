@@ -17,10 +17,20 @@
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "permissions": ["clipboardRead", "clipboardWrite", "storage", "downloads", "contextMenus", "offscreen", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "commands": {
+    "open-easyss": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Abrir EasySS Selector"
     }
   },
-  "permissions": ["clipboardRead", "clipboardWrite", "storage", "downloads", "contextMenus", "offscreen"],
-  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -34,11 +44,22 @@
       "all_frames": true,
       "run_at": "document_start",
       "world": "MAIN"
+    },
+    {
+      "matches": ["https://cobalt.tools/*"],
+      "js": ["cobalt_bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://cobalt.tools/*"],
+      "js": ["cobalt_bridge_main.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["modal.html", "modal.css", "modal.js", "offscreen.html", "offscreen.js"],
+      "resources": ["modal.html", "modal.css", "modal.js", "offscreen.html", "offscreen.js", "popup.html", "popup.js", "popup.css", "cobalt_bridge.js", "cobalt_bridge_main.js"],
       "matches": ["<all_urls>"]
     }
   ]

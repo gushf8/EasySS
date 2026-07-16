@@ -4,13 +4,13 @@
 - **FIX Universal Clipboard (Instagram/FB)**: Implementado el patrón de **Offscreen Documents** para leer el portapapeles desde el origen de la extensión, saltando los bloqueos de CSP y permisos de sitios restrictivos.
 - **FIX File Explorer Loop**: Corregido el error donde el explorador de Windows se cerraba y reabría al primer clic; ahora la sincronización de flags entre scripts es total.
 - **FIX Google Permissions**: Eliminado el molesto aviso de "google.com quiere leer el portapapeles" al mover la detección de capturas fuera del contexto de la página host.
-- **FEATURE Doble Shift Inteligente**: Ahora la extensión recuerda el cursor y el campo de chat donde estabas escribiendo para realizar un pegado automático instantáneo al elegir la imagen.
+- **FEATURE Ctrl + Shift Inteligente**: Ahora la extensión recuerda el cursor y el campo de chat donde estabas escribiendo para realizar un pegado automático instantáneo al elegir la imagen.
 - **MEJORA UI (Scroll Horizontal)**: Rediseño de las secciones a filas horizontales con scroll, limitando a 8 imágenes visibles para una navegación más rápida y profesional.
 - **FEATURE Etiquetas de Origen**: Añadidas etiquetas visuales ("SS" para portapapeles y "Copiado" para click derecho) para identificar el origen de cada captura.
 
 ### [Actualización 1.0.1] - 2026-04-28: Universalidad y Persistencia
 - **FIX Facebook/Instagram**: Corregido el problema donde las imágenes "Copiadas" normalmente no cargaban. Ahora se detectan mediante un sistema pre-emptivo al hacer clic derecho.
-- **FIX WhatsApp**: Corregido el error donde el "Doble Shift" no abría el selector. Ahora se usa la fase de captura de eventos para saltar el bloqueo de WhatsApp.
+- **FIX WhatsApp**: Corregido el error donde "Ctrl + Shift" no abría el selector. Ahora se usa la fase de captura de eventos para saltar el bloqueo de WhatsApp.
 - **FEATURE Menú Contextual**: Añadida la opción "Capturar imagen con EasySS" para forzar la captura de cualquier imagen protegida.
 - **FEATURE Persistencia Eterna**: Implementado sistema de Exportar/Importar historial (.easyss) para sobrevivir a desinstalaciones.
 - **FEATURE Descarga Directa**: Añadido botón de descarga a cada captura para guardar archivos físicamente.
@@ -47,4 +47,4 @@
 - Se eliminaron los retardos (`setTimeout`) al disparar el clic de respaldo, haciendo que la respuesta sea instantánea.
 
 ## 6. Pegado Inteligente (Auto-Paste)
-**Mejora:** En el modo manual (Double Shift), si no hay un campo de texto interceptado, la extensión intenta "pegar" el archivo seleccionado directamente en el elemento que tenga el foco en la página, mejorando la usabilidad en aplicaciones de chat.
+**Mejora:** En el modo manual (Ctrl + Shift), si no hay un campo de texto interceptado, la extensión intenta "pegar" el archivo seleccionado directamente en el elemento que tenga el foco en la página, mejorando la usabilidad en aplicaciones de chat.

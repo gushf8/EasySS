@@ -1,5 +1,5 @@
 # Guía de Instalación
-
+Última actualización: 2026-05-20
 Sigue estos pasos para instalar la extensión **EasySS** en tu navegador Chrome o cualquier navegador basado en Chromium (Edge, Brave, Opera, etc.).
 
 ## Requisitos

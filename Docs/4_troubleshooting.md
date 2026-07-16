@@ -1,4 +1,5 @@
 # Solución de Problemas (Troubleshooting)
+Última actualización: 2026-05-20
 
 Si encuentras problemas al usar EasySS, consulta esta guía para encontrar soluciones rápidas.
 

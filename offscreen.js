@@ -2,8 +2,78 @@
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'READ_CLIPBOARD_OFFSCREEN') {
     readClipboard();
+  } else if (message.type === 'WRITE_CLIPBOARD_OFFSCREEN') {
+    writeToClipboard(message.dataUrl);
   }
 });
+
+async function writeToClipboard(dataUrl) {
+  try {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const pngBlob = await convertToPng(blob);
+    
+    try {
+      const data = [new ClipboardItem({ 'image/png': pngBlob })];
+      await navigator.clipboard.write(data);
+      chrome.runtime.sendMessage({ type: 'CLIPBOARD_WRITE_SUCCESS' });
+      return;
+    } catch (clipErr) {
+      console.warn("navigator.clipboard.write failed in offscreen, trying execCommand fallback:", clipErr);
+      
+      // Fallback: document.execCommand('copy') using a selected <img> element
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.position = 'fixed';
+      img.style.pointerEvents = 'none';
+      img.style.opacity = '0';
+      document.body.appendChild(img);
+      
+      const range = document.createRange();
+      range.selectNode(img);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      const success = document.execCommand('copy');
+      document.body.removeChild(img);
+      selection.removeAllRanges();
+      
+      if (success) {
+        chrome.runtime.sendMessage({ type: 'CLIPBOARD_WRITE_SUCCESS' });
+        return;
+      } else {
+        throw new Error("execCommand copy returned false");
+      }
+    }
+  } catch (err) {
+    console.warn("Offscreen write failed:", err);
+    chrome.runtime.sendMessage({ type: 'CLIPBOARD_WRITE_ERROR', error: err.message });
+  }
+}
+
+async function convertToPng(blob) {
+  if (blob.type === 'image/png') return blob;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width; canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((resultBlob) => {
+          if (resultBlob) resolve(resultBlob);
+          else reject(new Error('Canvas toBlob failed'));
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      } catch (e) { reject(e); URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { reject(new Error('Failed to load image')); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+}
 
 async function readClipboard() {
   try {

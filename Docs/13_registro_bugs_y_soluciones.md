@@ -23,7 +23,7 @@ La extensión cuenta con un motor de sincronización automática que lee el port
 ## 2. Toasts de Confirmación Falsos Positivos
 
 ### **Descripción del Bug**
-Cada vez que el usuario abría el selector (Doble Shift), aparecía el mensaje "Imagen capturada con éxito", incluso si no había nada nuevo.
+Cada vez que el usuario abría el selector (Ctrl + Shift), aparecía el mensaje "Imagen capturada con éxito", incluso si no había nada nuevo.
 
 ### **Causa Raíz**
 La función de captura no discriminaba entre imágenes nuevas y existentes. Al encontrar una imagen en el portapapeles, lanzaba la notificación de éxito independientemente de si ya estaba en el historial.

@@ -66,6 +66,46 @@
     if (!e.data || e.data.source !== 'EASYSS_CONTENT_SCRIPT') return;
     
     const data = e.data;
+    
+    if (data.action === 'PASTE_FILE') {
+      try {
+        const parts = data.dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)[1];
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const file = new File([blob], data.filename || 'screenshot.png', { type: mime });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        
+        const activeEl = document.activeElement;
+        if (activeEl) {
+          if (activeEl.focus) activeEl.focus();
+          
+          const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true
+          });
+          
+          Object.defineProperty(pasteEvent, 'clipboardData', {
+            value: dt,
+            writable: false,
+            configurable: true
+          });
+          
+          activeEl.dispatchEvent(pasteEvent);
+          console.log("EasySS: Dispatched main world paste event into", activeEl.tagName);
+        }
+      } catch (err) {
+        console.error("EasySS: Error in main world PASTE_FILE", err);
+      }
+      return;
+    }
+    
     const input = inputMap.get(data.inputId);
     if (!input) return;
     

@@ -6,6 +6,24 @@ const DB_NAME = 'EasySS_DB';
 const STORE_NAME = 'images';
 let db;
 
+function getCleanFilename(filename, timestamp = Date.now()) {
+  let ext = 'png';
+  if (filename) {
+    const parts = filename.split('.');
+    if (parts.length > 1) {
+      ext = parts.pop().toLowerCase();
+    }
+    if (!filename.toLowerCase().includes('easy')) {
+      return filename;
+    }
+  }
+  const now = new Date(timestamp);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const year = now.getFullYear();
+  return `IMG_${month}-${day}-${year}.${ext}`;
+}
+
 // Persistent blacklist to prevent auto-readding deleted clipboard items
 // We use chrome.storage.local because the modal (iframe) is re-created on each open.
 async function isHashBanned(hash) {
@@ -146,6 +164,14 @@ async function emptyTrashInDB() {
 
 async function copyToClipboard(item) {
   try {
+    const isImage = !item.filename || /\.(jpg|jpeg|png|webp|gif|bmp|avif)$/i.test(item.filename);
+    
+    if (!isImage) {
+      await navigator.clipboard.writeText(item.filename || 'documento');
+      showToast("Nombre del documento copiado");
+      return;
+    }
+
     let blob;
     if (item.type === 'clipboard') {
       blob = item.blob;
@@ -154,26 +180,31 @@ async function copyToClipboard(item) {
       blob = await response.blob();
     }
     
-    if (blob.type.startsWith('image/')) {
-      // Ensure we use PNG for maximum compatibility with ClipboardItem
-      // and wait for a user gesture context if needed
-      const pngBlob = await convertToPng(blob);
+    const pngBlob = await convertToPng(blob);
+    
+    // 1. Try direct write in modal first (handles focused, user-triggered context)
+    try {
       const data = [new ClipboardItem({ 'image/png': pngBlob })];
       await navigator.clipboard.write(data);
       showToast("Imagen copiada al portapapeles");
-    } else {
-      // For docs, we can't easily copy a file object, so we copy the filename
-      await navigator.clipboard.writeText(item.filename || "Archivo");
-      showToast("Nombre del archivo copiado");
+      return;
+    } catch (directErr) {
+      console.warn("Direct clipboard write failed, trying content script fallback:", directErr);
     }
+    
+    // Convert PNG blob to data URL for message passing
+    const pngDataUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(pngBlob);
+    });
+    
+    // 2. Send message to content script to write
+    sendMessage('WRITE_CLIPBOARD_FROM_CONTENT', { dataUrl: pngDataUrl });
+    
   } catch (err) {
-    console.error("Error copying to clipboard:", err);
-    // If it's a fetch error for downloads, explain it
-    if (err.name === 'TypeError' && item.type === 'download') {
-      showToast("No se puede copiar: URL de origen inaccesible");
-    } else {
-      showToast("Error al copiar");
-    }
+    console.error("Error preparing for clipboard copy:", err);
+    showToast("Error al copiar", "error");
   }
 }
 
@@ -240,7 +271,7 @@ async function downloadItem(item) {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = item.filename || `easyss_${Date.now()}.png`;
+    a.download = getCleanFilename(item.filename, item.timestamp || Date.now());
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -386,17 +417,31 @@ function showToast(message, type = 'success') {
 }
 
 async function processAndSendBlob(blob, filename = null) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      sendMessage('FILE_SELECTED', {
-        dataUrl: e.target.result,
-        filename: filename || `easyss_${Date.now()}.png`
-      });
-      resolve();
-    };
-    reader.readAsDataURL(blob);
-  });
+  if (hasTargetInput) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        sendMessage('FILE_SELECTED', {
+          dataUrl: e.target.result,
+          filename: getCleanFilename(filename)
+        });
+        resolve();
+      };
+      reader.readAsDataURL(blob);
+    });
+  } else {
+    if (blob.type.startsWith('image/')) {
+      try {
+        const hash = await hashBlob(blob);
+        const { item } = await addImageToDB(blob, 'SS');
+        await copyToClipboard(item);
+      } catch (clipErr) {
+        console.error("Popup clipboard copy error:", clipErr);
+      }
+    } else {
+      showToast("Solo se pueden copiar imágenes al portapapeles", "error");
+    }
+  }
 }
 
 
@@ -415,7 +460,7 @@ async function refreshUI() {
     try {
       const storage = await chrome.storage.local.get('preemptiveImage');
       if (storage.preemptiveImage) {
-        const { dataUrl, timestamp } = storage.preemptiveImage;
+        const { dataUrl, timestamp, source } = storage.preemptiveImage;
         // Only consider it if it happened in the last 2 minutes
         if (Date.now() - timestamp < 120000) {
           const response = await fetch(dataUrl);
@@ -423,7 +468,7 @@ async function refreshUI() {
           const hash = await hashBlob(blob);
 
           if (!(await isHashBanned(hash))) {
-            await addImageToDB(blob, 'Copiado');
+            await addImageToDB(blob, source || 'Copiado');
           }
           // Clear it so we don't add it again on next refresh
           chrome.storage.local.remove('preemptiveImage');
@@ -466,13 +511,15 @@ async function refreshUI() {
     }
 
     // 5. Render Sections
-    const clipboardItems = dbImages.map(img => ({ ...img, type: 'clipboard' }));
+    const webItems = dbImages.filter(img => img.source === 'Copiado').map(img => ({ ...img, type: 'clipboard' }));
+    const clipboardItems = dbImages.filter(img => img.source !== 'Copiado').map(img => ({ ...img, type: 'clipboard' }));
     const imageItems = downloadImages.map(img => ({ 
       ...img,
       id: 'dl_' + img.id, 
       type: 'download'
     }));
 
+    renderSection('webCapturedGrid', webItems.slice(0, 100), newHash); 
     renderSection('clipboardGrid', clipboardItems.slice(0, 100), newHash); 
     renderSection('downloadsGrid', imageItems.slice(0, 100), null); 
     renderDocuments(downloadDocuments.slice(0, 100));
@@ -572,6 +619,32 @@ function renderDocuments(docs) {
     });
     
     list.appendChild(item);
+  });
+
+  // Verify document availability in the background silently
+  docs.forEach(async (doc) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const response = await fetch(doc.url, { method: 'HEAD', signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok && response.status !== 405) {
+        throw new Error('Invalid URL');
+      }
+    } catch (err) {
+      const docEl = list.querySelector(`.doc-item[data-id="dl_${doc.id}"]`);
+      if (docEl) {
+        docEl.remove();
+        const type = docEl.dataset.type;
+        const id = docEl.dataset.id;
+        if (type === 'download' && id) {
+          const numericId = parseInt(id.toString().replace('dl_', ''));
+          if (!isNaN(numericId)) {
+            chrome.runtime.sendMessage({ type: 'ERASE_DOWNLOAD', id: numericId });
+          }
+        }
+      }
+    }
   });
 }
 
@@ -680,10 +753,19 @@ function renderSection(gridId, items, newHash) {
   
   if (items.length === 0) {
     const isClipboard = gridId === 'clipboardGrid';
+    const isWeb = gridId === 'webCapturedGrid';
     const isTrash = gridId === 'trashGrid';
+    let emptyText = 'No hay descargas recientes';
+    if (isTrash) {
+      emptyText = 'La papelera está vacía';
+    } else if (isClipboard) {
+      emptyText = 'No hay capturas recientes';
+    } else if (isWeb) {
+      emptyText = 'No hay imágenes de la web recientes';
+    }
     grid.innerHTML = `
       <div class="empty-state">
-        <p style="font-size:0.9rem;opacity:0.6;">${isTrash ? 'La papelera está vacía' : (isClipboard ? 'No hay capturas recientes' : 'No hay descargas recientes')}</p>
+        <p style="font-size:0.9rem;opacity:0.6;">${emptyText}</p>
       </div>`;
     return;
   }
@@ -706,12 +788,22 @@ function renderSection(gridId, items, newHash) {
     if (item.hash === newHash) {
       badgeHtml = '<div class="badge-new">Nueva</div>';
     } else if (item.type === 'download') {
-      badgeHtml = '<div class="badge-download">Descarga</div>';
+      badgeHtml = item.isVideo ? '<div class="badge-download" style="background:#6366f1;">Video</div>' : '<div class="badge-download">Descarga</div>';
     } else if (item.source) {
       const sourceLabel = item.source === 'SS' ? 'SS' : 'Copiado';
       badgeHtml = `<div class="badge-source">${sourceLabel}</div>`;
     }
     
+    const isVideo = !!item.isVideo;
+    const mediaHtml = isVideo ? `
+      <div class="video-preview-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #1e293b; color: #6366f1; position: relative;">
+        <svg style="width: 42px; height: 42px; margin-bottom: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 00-2 2z"></path></svg>
+        <span style="font-size: 0.7rem; text-align: center; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; color: #94a3b8; position: absolute; bottom: 8px;">
+          ${item.filename || 'video.mp4'}
+        </span>
+      </div>
+    ` : `<img src="${imgUrl}" alt="Imagen">`;
+
     const date = new Date(item.timestamp);
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
@@ -725,25 +817,25 @@ function renderSection(gridId, items, newHash) {
     card.innerHTML = `
       ${badgeHtml}
       ${locateBtnHtml}
-      <button class="copy-btn" title="Copiar al portapapeles">
+      <button class="copy-btn" title="Copiar al portapapeles" style="${isVideo ? 'display:none;' : ''}">
         <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
       </button>
       ${item.deleted ? `
       <button class="restore-btn" title="Restaurar imagen">
         <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
       </button>` : `
-      <button class="download-btn" title="Descargar a mi PC">
+      <button class="download-btn" title="Descargar a mi PC" style="${isVideo ? 'display:none;' : ''}">
         <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
       </button>`}
       <button class="delete-btn" title="${deleteTitle}">
         <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
-      <img src="${imgUrl}" alt="Imagen">
+      ${mediaHtml}
       <div class="badge-dimensions" style="display:none;"></div>
       <div class="overlay">
         <div class="overlay-text">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-          Seleccionar (${timeStr})
+          ${isVideo ? 'Abrir Carpeta' : 'Seleccionar'} (${timeStr})
         </div>
       </div>
     `;
@@ -751,17 +843,19 @@ function renderSection(gridId, items, newHash) {
     const img = card.querySelector('img');
     const dimBadge = card.querySelector('.badge-dimensions');
     
-    const updateDims = () => {
-      if (img.naturalWidth && img.naturalHeight) {
-        dimBadge.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
-        dimBadge.style.display = 'block';
-      }
-    };
-    
-    img.onload = updateDims;
-    if (img.complete) updateDims();
-    
-    img.addEventListener('error', () => handleUIError(img));
+    if (img) {
+      const updateDims = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          dimBadge.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+          dimBadge.style.display = 'block';
+        }
+      };
+      
+      img.onload = updateDims;
+      if (img.complete) updateDims();
+      
+      img.addEventListener('error', () => handleUIError(img));
+    }
     
     const delBtn = card.querySelector('.delete-btn');
     const copyBtn = card.querySelector('.copy-btn');
@@ -770,7 +864,7 @@ function renderSection(gridId, items, newHash) {
     delBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       if (item.deleted) {
-        if (confirm("¿Eliminar permanentemente esta imagen?")) {
+        if (confirm(isVideo ? "¿Eliminar permanentemente este video?" : "¿Eliminar permanentemente esta imagen?")) {
           await permanentlyDeleteFromDB(item.id);
           card.remove();
         }
@@ -789,15 +883,19 @@ function renderSection(gridId, items, newHash) {
       });
     }
     
-    copyBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      copyToClipboard(item);
-    });
+    if (copyBtn && !isVideo) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyToClipboard(item);
+      });
+    }
 
-    dlBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      downloadItem(item);
-    });
+    if (dlBtn && !isVideo) {
+      dlBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        downloadItem(item);
+      });
+    }
 
     const locateBtn = card.querySelector('.locate-btn');
     if (locateBtn) {
@@ -811,32 +909,36 @@ function renderSection(gridId, items, newHash) {
       card.style.transform = 'scale(0.95)';
       card.style.opacity = '0.7';
       
+      if (isVideo) {
+        locateItem(item.id);
+        card.style.transform = '';
+        card.style.opacity = '';
+        return;
+      }
+
       try {
         let blob;
         if (item.type === 'clipboard') {
           blob = item.blob;
         } else {
-          // Add timeout to fetch
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-          const response = await fetch(item.url, { signal: controller.signal });
-          clearTimeout(timeoutId);
-          if (!response.ok) throw new Error('File not found');
+          const response = await fetch(item.url);
           blob = await response.blob();
         }
-
+        
         const reader = new FileReader();
         reader.onload = (e) => {
           sendMessage('FILE_SELECTED', {
             dataUrl: e.target.result,
-            filename: item.filename || `easyss_${item.timestamp}.png`
+            filename: item.filename || 'capture.png'
           });
         };
         reader.readAsDataURL(blob);
       } catch (err) {
-        console.error("Error processing selection:", err);
-        showToast("Archivo no disponible", "error");
-        handleUIError(card);
+        console.error("Error processing card click:", err);
+        showToast("Error al seleccionar la imagen", "error");
+      } finally {
+        card.style.transform = '';
+        card.style.opacity = '';
       }
     });
     
@@ -853,7 +955,7 @@ window.addEventListener('message', (e) => {
     // Delayed retry for heavy clipboard data (like Facebook images)
     setTimeout(refreshUI, 500);
   } else if (e.data && e.data.type === 'EXTERNAL_IMAGE_CAPTURED') {
-    handleExternalImage(e.data.dataUrl);
+    handleExternalImage(e.data.dataUrl, e.data.source || 'SS');
   } else if (e.data && e.data.type === 'TRIGGER_LOCAL_FILE_PICKER') {
     document.getElementById('localFileInput').click();
   }
@@ -863,16 +965,30 @@ window.addEventListener('message', (e) => {
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'EXTERNAL_IMAGE_CAPTURED') {
-      handleExternalImage(message.dataUrl);
+      handleExternalImage(message.dataUrl, message.source || 'SS');
     }
   });
 }
 
-async function handleExternalImage(dataUrl) {
+async function handleExternalImage(dataUrl, source = 'SS') {
   if (!dataUrl) return;
   try {
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
+    let blob;
+    if (dataUrl.startsWith('data:')) {
+      const parts = dataUrl.split(',');
+      const mime = parts[0].match(/:(.*?);/)[1];
+      const bstr = atob(parts[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      blob = new Blob([u8arr], { type: mime });
+    } else {
+      const response = await fetch(dataUrl);
+      blob = await response.blob();
+    }
+    
     const hash = await hashBlob(blob);
 
     if (await isHashBanned(hash)) {
@@ -880,7 +996,7 @@ async function handleExternalImage(dataUrl) {
       return;
     }
 
-    const { isNew } = await addImageToDB(blob, 'Copiado');
+    const { isNew } = await addImageToDB(blob, source);
     if (isNew) {
       showToast("Imagen capturada con éxito");
     }
@@ -954,6 +1070,10 @@ async function checkActivation() {
     chrome.storage.local.get('isActivated', (result) => {
       if (!result.isActivated) {
         document.getElementById('activationOverlay').style.display = 'flex';
+        setTimeout(() => {
+          const pwdInput = document.getElementById('activationPassword');
+          if (pwdInput) pwdInput.focus();
+        }, 100);
       }
       resolve();
     });
@@ -1033,6 +1153,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('activateBtn').addEventListener('click', handleActivation);
   document.getElementById('activationPassword').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleActivation();
+  });
+
+  // Settings UI Event Listeners
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    chrome.storage.local.get('shortcutKey', (data) => {
+      document.getElementById('shortcutKeySelect').value = data.shortcutKey || 'CtrlShift';
+      document.getElementById('settingsOverlay').style.display = 'flex';
+    });
+  });
+
+  document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+    document.getElementById('settingsOverlay').style.display = 'none';
+  });
+
+  document.getElementById('chromeShortcutsBtn').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'OPEN_CHROME_SHORTCUTS' });
+  });
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+    const key = document.getElementById('shortcutKeySelect').value;
+    chrome.storage.local.set({ shortcutKey: key }, () => {
+      showToast("Configuración guardada");
+      document.getElementById('settingsOverlay').style.display = 'none';
+    });
   });
 
   // Trash UI Event Listeners
@@ -1130,6 +1274,14 @@ document.addEventListener('paste', async (e) => {
     } catch (err) {
       console.error("Error pasting image:", err);
     }
+  }
+});
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'CLIPBOARD_WRITE_SUCCESS') {
+    showToast("Imagen copiada al portapapeles");
+  } else if (message.type === 'CLIPBOARD_WRITE_ERROR') {
+    showToast("Error al copiar imagen", "error");
   }
 });
 
