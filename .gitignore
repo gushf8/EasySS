@@ -1,0 +1,53 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# Windows shortcuts and temp
+*.lnk
+*.tmp
+*.temp
+*.log
+
+# IDE & Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build outputs, archives & distribution packages
+dis/
+dist/
+build/
+*.crx
+*.pem
+*.zip
+*.tar.gz
+*.tgz
+
+# Node / npm (in case tools are added in the future)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Internal documentation and development notes
+Docs/
+docs/
+
