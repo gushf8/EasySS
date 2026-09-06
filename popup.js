@@ -3,14 +3,12 @@ let detectedVideoUrl = null;
 let activeTabId = null;
 
 // Initialize Popup
-document.addEventListener('DOMContentLoaded', async () => {
-  await checkActivation();
-  
-  // Input and Actions Event Listeners
-  document.getElementById('activateBtn').addEventListener('click', handleActivation);
-  document.getElementById('activationPassword').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleActivation();
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  // Focus main manual URL input
+  setTimeout(() => {
+    const urlInput = document.getElementById('videoUrlInput');
+    if (urlInput) urlInput.focus();
+  }, 100);
 
   document.getElementById('downloadBtn').addEventListener('click', handleManualDownload);
   document.getElementById('videoUrlInput').addEventListener('keypress', (e) => {
@@ -35,50 +33,6 @@ function showToast(message, type = 'success') {
   if (type === 'error') toast.classList.add('error');
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-// Activation Checking
-async function checkActivation() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('isActivated', (result) => {
-      if (!result.isActivated) {
-        document.getElementById('activationOverlay').style.display = 'flex';
-        setTimeout(() => {
-          const pwdInput = document.getElementById('activationPassword');
-          if (pwdInput) pwdInput.focus();
-        }, 120);
-      } else {
-        // Force focus on main manual URL input if already activated
-        setTimeout(() => {
-          const urlInput = document.getElementById('videoUrlInput');
-          if (urlInput) urlInput.focus();
-        }, 100);
-      }
-      resolve();
-    });
-  });
-}
-
-function handleActivation() {
-  const password = document.getElementById('activationPassword').value;
-  const error = document.getElementById('activationError');
-  
-  if (password === 'meloso824') {
-    chrome.storage.local.set({ isActivated: true }, () => {
-      document.getElementById('activationOverlay').style.display = 'none';
-      showToast("¡EasySS Activado!");
-      setTimeout(() => {
-        const urlInput = document.getElementById('videoUrlInput');
-        if (urlInput) urlInput.focus();
-      }, 100);
-    });
-  } else {
-    error.style.display = 'block';
-    document.getElementById('activationPassword').style.borderColor = 'var(--danger)';
-    setTimeout(() => {
-      document.getElementById('activationPassword').style.borderColor = 'var(--border-color)';
-    }, 1000);
-  }
 }
 
 // Auto Detect Tab Video

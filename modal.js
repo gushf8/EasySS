@@ -1065,48 +1065,10 @@ async function importDatabase(file) {
   }
 }
 
-async function checkActivation() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('isActivated', (result) => {
-      if (!result.isActivated) {
-        document.getElementById('activationOverlay').style.display = 'flex';
-        setTimeout(() => {
-          const pwdInput = document.getElementById('activationPassword');
-          if (pwdInput) pwdInput.focus();
-        }, 100);
-      }
-      resolve();
-    });
-  });
-}
-
-function handleActivation() {
-  const password = document.getElementById('activationPassword').value;
-  const error = document.getElementById('activationError');
-  
-  if (password === 'meloso824') {
-    chrome.storage.local.set({ isActivated: true }, () => {
-      document.getElementById('activationOverlay').style.opacity = '0';
-      setTimeout(() => {
-        document.getElementById('activationOverlay').style.display = 'none';
-      }, 400);
-      showToast("¡EasySS Activado!");
-    });
-  } else {
-    error.style.display = 'block';
-    document.getElementById('activationPassword').style.borderColor = 'var(--danger)';
-    setTimeout(() => {
-      document.getElementById('activationPassword').style.borderColor = 'rgba(255, 255, 255, 0.1)';
-    }, 1000);
-  }
-}
-
 // Refresh when window gets focus (e.g. user returns from taking a screenshot)
 window.addEventListener('focus', refreshUI);
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await checkActivation();
-  
   document.getElementById('closeBtn').addEventListener('click', () => sendMessage('CLOSE_MODAL'));
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') sendMessage('CLOSE_MODAL');
@@ -1148,11 +1110,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('backupFileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) importDatabase(file);
-  });
-
-  document.getElementById('activateBtn').addEventListener('click', handleActivation);
-  document.getElementById('activationPassword').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleActivation();
   });
 
   // Settings UI Event Listeners
