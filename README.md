@@ -1,5 +1,7 @@
 # ⚡ EasySS Image Upload - Chrome Extension
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 > **Sube capturas de pantalla e imágenes de tu portapapeles a cualquier web al instante, sin guardarlas en tu disco ni buscarlas manualmente.**
 
 Inspirado en la funcionalidad *Easy Files* de Opera, **EasySS** intercepta automáticamente los selectores de subida de archivos en la web o te permite activarlo con un atajo, presentándote un modal flotante moderno con tus capturas recientes y portapapeles listo para usar con un solo clic.
@@ -83,4 +85,7 @@ Si descargas una versión actualizada del repositorio o modificas el código:
 ---
 
 ## 📄 Licencia y Privacidad
-Este proyecto es de código abierto. Tus datos e imágenes nunca salen de tu ordenador.
+Este proyecto está bajo la Licencia **MIT** - consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+🔒 **Privacidad:** Tus datos, capturas e imágenes nunca salen de tu ordenador ni se envían a ningún servidor externo.
+
